@@ -4,6 +4,7 @@
 #undef FALSE
 #undef TRUE
 #include "./include/decode_jpeg.h"
+#include "./include/decode_png.h"
 
 static gboolean on_draw_event(GtkWidget *widget, cairo_t *cr, gpointer user_data) {
     (void) widget;
@@ -64,10 +65,15 @@ int main(int argc, char** argv) {
         return status;
     }
 
-    Image image = decode_jpeg(image_file);
+    Image image = {};
+    if (image_file -> file_type == JPEG) {
+        image = decode_jpeg(image_file);
+    } else if (image_file -> file_type == PNG) {
+        image = decode_png(image_file);
+    }
 
     if (image.error) {
-        image.error = CLAMP(image.error, 0, 10);
+        image.error = CLAMP(image.error, 0, 11);
         error_print("terminate the program with the error code: %s\n", err_codes[image.error]);
         return (image.error);
     }

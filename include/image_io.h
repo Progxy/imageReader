@@ -8,13 +8,28 @@
 
 #define CHECK_JPEG(data) ((data)[0] == 0xFF && (data)[1] == 0xD8)
 
+static const unsigned char png_magic_numbers[] = {0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+
 static bool check_image_file(FileData* image_file) {
     if (CHECK_JPEG(image_file -> data)) {
         image_file -> file_type = JPEG;
         return TRUE;
     }
 
-    return TRUE;
+    bool is_png = TRUE;
+    for (unsigned char i = 0; i < 8; ++i) {
+        if ((image_file -> data)[i] != png_magic_numbers[i]) {
+            is_png = FALSE;
+            break;
+        }
+    }
+
+    if (is_png) {
+        image_file -> file_type = PNG;
+        return TRUE;
+    }
+
+    return FALSE;
 }
 
 bool read_image_file(FileData* image_file, const char* filename) {
@@ -50,7 +65,7 @@ bool read_image_file(FileData* image_file, const char* filename) {
         return INVALID_FILE_TYPE;
     }
 
-    debug_print(GREEN, "The current image file is valid %s!\n\n", file_types[image_file -> file_type]);
+    debug_print(GREEN, "The current image file is valid %s image!\n\n", file_types[image_file -> file_type]);
 
     return NO_ERROR;
 }

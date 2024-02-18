@@ -114,6 +114,18 @@ typedef struct JPEG_Image {
     JPEGType jpeg_type;
 } JPEG_Image;
 
+typedef struct Chunk {
+    unsigned int pos;
+    unsigned char chunk_type[5];
+    unsigned int length;
+} Chunk;
+
+typedef struct Chunks {
+    Chunk* chunks;
+    unsigned int chunks_count;
+    unsigned char invalid_chunks;
+} Chunks;
+
 #define SET_COLOR(color) printf("\033[%d;1m", color)
 #define RESET_COLOR() printf("\033[0m")
 #define FALSE 0

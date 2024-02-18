@@ -27,13 +27,15 @@ void print_hex(Colors color, unsigned char val) {\
     return;
 }
 
-void print_bits(unsigned long int val, unsigned char bits) {
+void print_bits(Colors color, unsigned long int val, unsigned char bits) {
+    SET_COLOR(color);
     printf(" 0B");
 
     for (int i = bits - 1; i >= 0; --i) {
         printf("%d%s", ((val >> i) & 1) != 0, i % 8 == 0 ? " " : "");
     }
 
+    RESET_COLOR();
     return;
 }
 
@@ -102,7 +104,7 @@ void warning_print(const char* format, ...) {
 void print_hex(Colors /*color*/, unsigned char /*val*/) {
     return;
 }
-void print_bits(unsigned long int /*val*/, unsigned char /*bits*/) {
+void print_bits(Colors /*color*/, unsigned long int /*val*/, unsigned char /*bits*/) {
     return;
 }
 void print_line(unsigned char* /*ptr*/, int /*start*/, unsigned int /*line_len*/) {
