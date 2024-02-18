@@ -36,9 +36,10 @@ static unsigned int* generate_crc_table() {
     return crc_table;
 }
 
-Chunks find_and_check_chunks(BitStream* bit_stream) {
+Chunks find_and_check_chunks(unsigned char* file_data, unsigned int file_length) {
     Chunks chunks = (Chunks) {.chunks = NULL, .chunks_count = 0, .invalid_chunks = 0};
     chunks.chunks = (Chunk*) calloc(1, sizeof(Chunk));
+    BitStream* bit_stream = allocate_bit_stream(file_data, file_length);
     unsigned int* crc_table = generate_crc_table();
     
     while (bit_stream -> byte < bit_stream -> size) {
@@ -79,6 +80,8 @@ Chunks find_and_check_chunks(BitStream* bit_stream) {
     }
 
     free(crc_table);
+    free(bit_stream);
+    
     return chunks;
 }
 
