@@ -103,7 +103,50 @@ void ycbcr_to_greyscale(int* y, RGB* rgb) {
     return;
 }
 
-RGB* mcu_to_rgb(MCU mcu) {
+// Bilinear interpolation function
+float bilinear_interpolation(float x, float y, float q11, float q12, float q21, float q22) {
+    float r1 = (q21 - q11) * x + q11;
+    float r2 = (q22 - q12) * x + q12;
+    return (r2 - r1) * y + r1;
+}
+
+int** upsample(unsigned char sf_h, unsigned char sf_v, int* data) {
+    int** new_data = (int**) calloc(sf_h * sf_v, sizeof(int*));
+    
+    for (unsigned char i = 0; i < sf_h * sf_v; ++i) {
+        new_data[i] = (int*) calloc(64, sizeof(int));
+    }
+    
+    for (int i = 0; i < 8 * sf_h; i++) {
+        for (int j = 0; j < 8 * sf_v; j++) {
+            // Calculate corresponding coordinates in the 8x8 matrix
+            float x = (i * 7) / (float) (8 * sf_h);
+            float y = (j * 7) / (float) (8 * sf_v);
+
+            int x1 = (int)x;
+            int y1 = (int)y;
+            int x2 = x1 + 1;
+            int y2 = y1 + 1;
+
+            float q11 = data[x1 * 8 + y1];
+            float q12 = data[x1 * 8 + y2];
+            float q21 = data[x2 * 8 + y1];
+            float q22 = data[x2 * 8 + y2];
+            
+            unsigned int ind = i * 8 * sf_v + j;
+            unsigned int ind_x = ind % (8 * sf_h);
+            unsigned int ind_y = (ind - ind_x) / (8 * sf_h);
+            unsigned int pos_x = (ind_x - (ind_x % 8)) / 8;
+            unsigned int pos_y = (ind_y - (ind_y % 8)) / 8;
+            
+            new_data[pos_y * sf_h + pos_x][(ind_y % 8) * 8 + (ind_x % 8)] = bilinear_interpolation(x - x1, y - y1, q11, q12, q21, q22);
+        }
+    }
+    
+    return new_data;
+}
+
+RGB* mcu_to_rgb(MCU mcu, DataTables* data_table) {
     // Init RGB values
     RGB* rgb = (RGB*) calloc(mcu.max_du, sizeof(RGB));
     for (unsigned char i = 0; i < mcu.max_du; ++i) {
@@ -112,14 +155,22 @@ RGB* mcu_to_rgb(MCU mcu) {
         rgb[i].B = (unsigned char*) calloc(64, sizeof(unsigned char));
     }
 
+    int** cr = upsample(data_table -> max_sf_h, data_table -> max_sf_v, mcu.data_units[mcu.comp_du_count[0]]);
+    int** cb = upsample(data_table -> max_sf_h, data_table -> max_sf_v, mcu.data_units[mcu.comp_du_count[0] + mcu.comp_du_count[1]]);
+
     // Convert YCbCr to RGB
     for (unsigned char i = 0; i < mcu.max_du; ++i) {
         if (mcu.components == 1) {
             ycbcr_to_greyscale(mcu.data_units[i % mcu.comp_du_count[0]], rgb + i);
             continue;
         }
-        ycbcr_to_rgb(mcu.data_units[i % mcu.comp_du_count[0]], mcu.data_units[mcu.comp_du_count[0] + (i % mcu.comp_du_count[1])], mcu.data_units[mcu.comp_du_count[0] + mcu.comp_du_count[1] + (i % mcu.comp_du_count[2])], rgb + i);
+        ycbcr_to_rgb(mcu.data_units[i % mcu.comp_du_count[0]], cr[i], cb[i], rgb + i);
+        free(cr[i]);
+        free(cb[i]);
     }
+
+    free(cr);
+    free(cb);
 
     return rgb;
 }
@@ -158,7 +209,7 @@ unsigned char mcus_to_image(Image* image, DataTables* data_table) {
 
     RGB** rgbs = (RGB**) calloc(image -> mcu_count, sizeof(RGB*));
     for (unsigned int i  = 0; i < image -> mcu_count; ++i) {
-        rgbs[i] = mcu_to_rgb(mcus[i]);
+        rgbs[i] = mcu_to_rgb(mcus[i], data_table);
     }
 
     unsigned int mcu_x = image -> mcu_x;
