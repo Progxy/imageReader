@@ -161,9 +161,7 @@ unsigned char mcus_to_image(Image* image, DataTables* data_table) {
         rgbs[i] = mcu_to_rgb(mcus[i]);
     }
 
-    // Recalculate mcu_x
-    unsigned int mcu_x = (image -> width - (image -> width % (8 * data_table -> max_sf_h))) / (8 * data_table -> max_sf_h); 
-
+    unsigned int mcu_x = image -> mcu_x;
     for (unsigned int h = 0; h < image -> height; ++h) {
         unsigned int r = (h - (h % (8 * data_table -> max_sf_v))) / (8 * data_table -> max_sf_v);
         unsigned int h1 = h - (8 * r * data_table -> max_sf_v);
