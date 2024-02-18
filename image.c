@@ -1,4 +1,4 @@
-// Usage example: use gtk to print the image on a new window 
+// The current file is an example of the implementation of the library, using gtk to print the image on a new window 
 
 #include <gtk/gtk.h>
 #undef FALSE
