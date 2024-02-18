@@ -138,7 +138,7 @@ int** upsample(unsigned char sf_h, unsigned char sf_v, int* data) {
             unsigned int ind_y = (ind - ind_x) / (8 * sf_h);
             unsigned int pos_x = (ind_x - (ind_x % 8)) / 8;
             unsigned int pos_y = (ind_y - (ind_y % 8)) / 8;
-            
+
             new_data[pos_y * sf_h + pos_x][(ind_y % 8) * 8 + (ind_x % 8)] = bilinear_interpolation(x - x1, y - y1, q11, q12, q21, q22);
         }
     }
@@ -155,8 +155,12 @@ RGB* mcu_to_rgb(MCU mcu, DataTables* data_table) {
         rgb[i].B = (unsigned char*) calloc(64, sizeof(unsigned char));
     }
 
-    int** cr = upsample(data_table -> max_sf_h, data_table -> max_sf_v, mcu.data_units[mcu.comp_du_count[0]]);
-    int** cb = upsample(data_table -> max_sf_h, data_table -> max_sf_v, mcu.data_units[mcu.comp_du_count[0] + mcu.comp_du_count[1]]);
+    int** cr = NULL;
+    int** cb = NULL;
+    if (mcu.components == 3) {
+        cr = upsample(data_table -> max_sf_h, data_table -> max_sf_v, mcu.data_units[mcu.comp_du_count[0]]);
+        cb = upsample(data_table -> max_sf_h, data_table -> max_sf_v, mcu.data_units[mcu.comp_du_count[0] + mcu.comp_du_count[1]]);
+    }
 
     // Convert YCbCr to RGB
     for (unsigned char i = 0; i < mcu.max_du; ++i) {
