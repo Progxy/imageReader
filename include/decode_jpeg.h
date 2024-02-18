@@ -12,8 +12,8 @@
 #include "./decode_huff.h"
 
 #define MARKER_FLAG(data, pos) ((data)[(pos)] == 0xFF)
-#define RESET_ERROR_FLAG(image) ((image) -> error = 0)
-#define CHECK_ERROR_FLAG(image) if ((image) -> error) return
+#define RESET_ERROR_FLAG(image) (((image)-> image_data).error = 0)
+#define CHECK_ERROR_FLAG(image) if (((image)-> image_data).error) return image -> image_data
 #define MARKER_PREFIX_CODE 0xFF
 #define MARKER_BASE_CODE 0xC0
 
@@ -21,19 +21,19 @@ static const char* component_types[] = {"Y", "Cb", "Cr", "I", "Q"};
 
 // DEFINITIONS
 
-void decode_app(Image* image, unsigned char marker_code);
+void decode_app(JPEG_Image* image, unsigned char marker_code);
 
-void decode_dqt(Image* image, DataTables* data_tables);
+void decode_dqt(JPEG_Image* image, DataTables* data_tables);
 
-void decode_sof(Image* image, DataTables* data_tables, unsigned char marker_code);
+void decode_sof(JPEG_Image* image, DataTables* data_tables, unsigned char marker_code);
 
-void decode_sos(Image* image, DataTables* data_tables);
+void decode_sos(JPEG_Image* image, DataTables* data_tables);
 
-void decode_dht(Image* image, DataTables* data_tables);
+void decode_dht(JPEG_Image* image, DataTables* data_tables);
 
-void decode_data(Image* image, DataTables* data_tables, unsigned char* image_data, unsigned int image_size);
+void decode_data(JPEG_Image* image, DataTables* data_tables, unsigned char* image_data, unsigned int image_size);
 
-Image* decode_image(FileData* image_file);
+Image decode_image(FileData* image_file);
 
 /* -------------------------------------------------------------------------------------- */
 // IMPLEMENTATIONS
@@ -59,7 +59,7 @@ bool jpeg_type_is_supported(JPEG_Type jpeg_type) {
     return FALSE;
 }
 
-void decode_com(Image* image) {
+void decode_com(JPEG_Image* image) {
     BitStream* bit_stream = image -> bit_stream;
     debug_print(PURPLE, "COM marker found at byte: %d: \n", bit_stream -> byte);
 
@@ -68,7 +68,7 @@ void decode_com(Image* image) {
 
     // Check for errors
     if (length & 0x8000) {
-        image -> error = length & 0x8008;
+        (image -> image_data).error = length & 0x8008;
         return;
     }
 
@@ -91,7 +91,7 @@ void decode_com(Image* image) {
     return;
 }
 
-void decode_app(Image* image, unsigned char marker_code) {
+void decode_app(JPEG_Image* image, unsigned char marker_code) {
     BitStream* bit_stream = image -> bit_stream;
 
     debug_print(PURPLE, "APP%d marker found at byte: %d: \n", marker_code - 0xE0, bit_stream -> byte);
@@ -103,7 +103,7 @@ void decode_app(Image* image, unsigned char marker_code) {
 
     // Check for errors
     if (length & 0x8000) {
-        image -> error = length & 0x8008;
+        (image -> image_data).error = length & 0x8008;
         return;
     }
 
@@ -150,7 +150,7 @@ void decode_app(Image* image, unsigned char marker_code) {
     return;
 }
 
-void decode_dqt(Image* image, DataTables* data_tables) {
+void decode_dqt(JPEG_Image* image, DataTables* data_tables) {
     BitStream* bit_stream = image -> bit_stream;
     debug_print(PURPLE, "DQT marker found at byte: %d: \n", bit_stream -> byte);
 
@@ -158,7 +158,7 @@ void decode_dqt(Image* image, DataTables* data_tables) {
     unsigned short length = get_marker_len(image);
 
     if (length & 0x8000) {
-        image -> error = length & 0x8008;
+        (image -> image_data).error = length & 0x8008;
         return;
     }
 
@@ -175,7 +175,7 @@ void decode_dqt(Image* image, DataTables* data_tables) {
         // Check that the number is in range 0..3
         if (dqt_id > 3) {
             error_print("Invalid Quantization Table Number!\n");
-            image -> error = INVALID_QUANTIZATION_TABLE_NUM;
+            (image -> image_data).error = INVALID_QUANTIZATION_TABLE_NUM;
             return;
         }
 
@@ -210,7 +210,7 @@ unsigned char max_val(unsigned char* vec, unsigned char len) {
     return max;
 }
 
-void decode_sof(Image* image, DataTables* data_tables, unsigned char marker_code) {
+void decode_sof(JPEG_Image* image, DataTables* data_tables, unsigned char marker_code) {
     BitStream* bit_stream = image -> bit_stream;
     debug_print(PURPLE, "SOF%d marker found at byte: %d!\n", marker_code - 0xC0, bit_stream -> byte);
 
@@ -218,7 +218,7 @@ void decode_sof(Image* image, DataTables* data_tables, unsigned char marker_code
     unsigned short length = get_marker_len(image);
 
     if (length & 0x8000) {
-        image -> error = length & 0x8008;
+        (image -> image_data).error = length & 0x8008;
         return;
     }
 
@@ -227,31 +227,31 @@ void decode_sof(Image* image, DataTables* data_tables, unsigned char marker_code
     unsigned char precision = get_next_byte_uc(bit_stream);
     debug_print(YELLOW, "Precision: %d(Bits/Samples)\n", precision);
 
-    image -> height = (get_next_byte_uc(bit_stream) << 8) | get_next_byte_uc(bit_stream);
-    debug_print(YELLOW, "Height: %d\n", image -> height);
+    (image -> image_data).height = (get_next_byte_uc(bit_stream) << 8) | get_next_byte_uc(bit_stream);
+    debug_print(YELLOW, "Height: %d\n", (image -> image_data).height);
     
     // Check that the height is valid
-    if (image -> height <= 0) {
+    if ((image -> image_data).height <= 0) {
         error_print("Invalid image height!\n");
-        image -> error = INVALID_IMAGE_HEIGHT;
+        (image -> image_data).error = INVALID_IMAGE_HEIGHT;
         return;
     }
 
-    image -> width = (get_next_byte_uc(bit_stream) << 8) | get_next_byte_uc(bit_stream);
+    (image -> image_data).width = (get_next_byte_uc(bit_stream) << 8) | get_next_byte_uc(bit_stream);
 
-    debug_print(YELLOW, "Width: %d\n", image -> width);
+    debug_print(YELLOW, "Width: %d\n", (image -> image_data).width);
 
     // Check that the height is valid
-    if (image -> width <= 0) {
+    if ((image -> image_data).width <= 0) {
         error_print("Invalid image width!\n");
-        image -> error = INVALID_IMAGE_WIDTH;
+        (image -> image_data).error = INVALID_IMAGE_WIDTH;
         return;
     }
 
-    image -> components = get_next_byte_uc(bit_stream);
-    debug_print(YELLOW, "Components: %d, %s\n", image -> components, image -> components == 1 ? "GREY SCALED" : "YCBCR or YIQ");
+    (image -> image_data).components = get_next_byte_uc(bit_stream);
+    debug_print(YELLOW, "Components: %d, %s\n", (image -> image_data).components, (image -> image_data).components == 1 ? "GREY SCALED" : "YCBCR or YIQ");
 
-    for (unsigned int i = 0; i < image -> components; ++i) {
+    for (unsigned int i = 0; i < (image -> image_data).components; ++i) {
         Component component;
         component.pred = 0;
         component.id = get_next_byte_uc(bit_stream);
@@ -272,14 +272,14 @@ void decode_sof(Image* image, DataTables* data_tables, unsigned char marker_code
         (data_tables -> components)[data_tables -> components_count - 1] = component;
     }
 
-    unsigned char** sampling_factors = (unsigned char**) calloc(image -> components, sizeof(unsigned char*));
-    unsigned char* comp_du_count = (unsigned char*) calloc(image -> components, sizeof(unsigned char));
+    unsigned char** sampling_factors = (unsigned char**) calloc((image -> image_data).components, sizeof(unsigned char*));
+    unsigned char* comp_du_count = (unsigned char*) calloc((image -> image_data).components, sizeof(unsigned char));
     unsigned char max_sf_h = 0;
     unsigned char max_sf_v = 0;
     unsigned char sf_count = 0;
 
     // Store the sampling factors
-    for (unsigned char i = 0; i < image -> components; ++i) {
+    for (unsigned char i = 0; i < (image -> image_data).components; ++i) {
         sampling_factors[i] = (unsigned char*) calloc(2, sizeof(unsigned char));
         sampling_factors[i][0] = (data_tables -> components[i]).sampling_factor_h;
         sampling_factors[i][1] = (data_tables -> components[i]).sampling_factor_v;
@@ -297,7 +297,7 @@ void decode_sof(Image* image, DataTables* data_tables, unsigned char marker_code
 
     data_tables -> sampling_factors = sampling_factors;
     data_tables -> comp_du_count = comp_du_count;
-    data_tables -> max_du = max_val(comp_du_count, image -> components);
+    data_tables -> max_du = max_val(comp_du_count, (image -> image_data).components);
     data_tables -> max_sf_h = max_sf_h;
     data_tables -> max_sf_v = max_sf_v;
     data_tables -> sf_count = sf_count;
@@ -308,7 +308,7 @@ void decode_sof(Image* image, DataTables* data_tables, unsigned char marker_code
     return;
 }
 
-void decode_sos(Image* image, DataTables* data_tables) {
+void decode_sos(JPEG_Image* image, DataTables* data_tables) {
     BitStream* bit_stream = image -> bit_stream;
     debug_print(PURPLE, "SOS marker found at byte: %d: \n", bit_stream -> byte);
 
@@ -316,7 +316,7 @@ void decode_sos(Image* image, DataTables* data_tables) {
     unsigned short length = get_marker_len(image);
 
     if (length & 0x8000) {
-        image -> error = length & 0x8008;
+        (image -> image_data).error = length & 0x8008;
         return;
     }
     
@@ -378,7 +378,7 @@ void decode_sos(Image* image, DataTables* data_tables) {
     return;
 }
 
-void decode_dri(Image* image) {
+void decode_dri(JPEG_Image* image) {
     BitStream* bit_stream = image -> bit_stream;
     debug_print(PURPLE, " DRI marker found at byte: %d: \n", (bit_stream) -> byte);
     
@@ -393,21 +393,21 @@ void decode_dri(Image* image) {
     print_line(bit_stream -> stream, bit_stream -> byte - 8, 16);
 
     if (length & 0x8000) {
-        image -> error = length & 0x8008;
+        (image -> image_data).error = length & 0x8008;
         return;
     }   
 
     return;
 }
 
-void decode_rst(Image* image, unsigned char interval_count, unsigned int data_len, DataTables* data_tables) {
+void decode_rst(JPEG_Image* image, unsigned char interval_count, unsigned int data_len, DataTables* data_tables) {
     BitStream* bit_stream = image -> bit_stream;
 
     debug_print(PURPLE, "RST%d marker found at byte: %d: \n", interval_count, bit_stream -> byte);
-    debug_print(YELLOW, "Decoding %u mcus for each of the %u components\n", image -> mcu_per_line, image -> components);
+    debug_print(YELLOW, "Decoding %u mcus for each of the %u components\n", image -> mcu_per_line, (image -> image_data).components);
 
     // Reset the pred for each component
-    for (unsigned char i = 0; i < image -> components; ++i) {
+    for (unsigned char i = 0; i < (image -> image_data).components; ++i) {
         (data_tables -> components)[i].pred = 0;
     }
 
@@ -418,7 +418,7 @@ void decode_rst(Image* image, unsigned char interval_count, unsigned int data_le
     return;
 }
 
-void decode_dht(Image* image, DataTables* data_tables) {
+void decode_dht(JPEG_Image* image, DataTables* data_tables) {
     BitStream* bit_stream = image -> bit_stream;
     debug_print(PURPLE, "DHT marker found at byte: %d: \n", bit_stream -> byte);
 
@@ -427,7 +427,7 @@ void decode_dht(Image* image, DataTables* data_tables) {
     unsigned short length = get_marker_len(image);
 
     if (length & 0x8000) {
-        image -> error = length & 0x8008;
+        (image -> image_data).error = length & 0x8008;
         return;
     }   
 
@@ -448,7 +448,7 @@ void decode_dht(Image* image, DataTables* data_tables) {
         // Check that the number is in range 0..3
         if (id > 3) {
             error_print("Invalid Huffman Table!\n");
-            image -> error = INVALID_HUFFMAN_TABLE_NUM;
+            (image -> image_data).error = INVALID_HUFFMAN_TABLE_NUM;
             return;
         }
 
@@ -554,19 +554,19 @@ void deallocate_data_table(DataTables* data_tables) {
     return;
 }
 
-void decode_data(Image* image, DataTables* data_tables, unsigned char* image_data, unsigned int image_size) {
+void decode_data(JPEG_Image* image, DataTables* data_tables, unsigned char* image_data, unsigned int image_size) {
     unsigned short int err = 0;
     unsigned char components = data_tables -> components_count;
     BitStream* bit_stream = allocate_bit_stream(image_data, image_size);
 
-    if (image -> components == 1) {
+    if ((image -> image_data).components == 1) {
         unsigned int pixels_x = 8 * (data_tables -> max_sf_h / (data_tables -> components)[0].sampling_factor_h);
         unsigned int pixels_y = 8 * (data_tables -> max_sf_v / (data_tables -> components)[0].sampling_factor_v);
-        image -> mcu_x = (image -> width + pixels_x - 1) / pixels_x;
-        image -> mcu_y = (image -> height + pixels_y - 1) / pixels_y;
+        image -> mcu_x = ((image -> image_data).width + pixels_x - 1) / pixels_x;
+        image -> mcu_y = ((image -> image_data).height + pixels_y - 1) / pixels_y;
     } else {
-        image -> mcu_x = (image -> width + 8 * data_tables -> max_sf_h - 1) / (8 * data_tables -> max_sf_h); 
-        image -> mcu_y = (image -> height + 8 * data_tables -> max_sf_v - 1) / (8 * data_tables -> max_sf_v); 
+        image -> mcu_x = ((image -> image_data).width + 8 * data_tables -> max_sf_h - 1) / (8 * data_tables -> max_sf_h); 
+        image -> mcu_y = ((image -> image_data).height + 8 * data_tables -> max_sf_v - 1) / (8 * data_tables -> max_sf_v); 
     }
 
     debug_print(BLUE, "\n");
@@ -591,7 +591,7 @@ void decode_data(Image* image, DataTables* data_tables, unsigned char* image_dat
             
             debug_print(YELLOW, "\n");
             
-            image -> error = DECODING_ERROR;
+            (image -> image_data).error = DECODING_ERROR;
             return;
         } else if (err == LENGTH_EXCEEDED) {
             decode_mcu(mcu, data_tables, t_m, m);
@@ -626,9 +626,9 @@ DataTables* init_data_tables() {
     return data_tables;
 }
 
-Image* decode_image(FileData* image_file) {
+Image decode_image(FileData* image_file) {
     // Init image struct
-    Image* image = (Image*) calloc(1, sizeof(Image));
+    JPEG_Image* image = (JPEG_Image*) calloc(1, sizeof(JPEG_Image));
     image -> image_file = *image_file;
     image -> mcu_count = 0;
     image -> mcus = (MCU*) calloc(1, sizeof(MCU));
@@ -655,8 +655,8 @@ Image* decode_image(FileData* image_file) {
         }
 
         if (!jpeg_type_is_supported(image -> jpeg_type)) {
-            image -> error = UNSUPPORTED_JPEG_TYPE;
-            return image;
+            (image -> image_data).error = UNSUPPORTED_JPEG_TYPE;
+            return image -> image_data;
         }
 
         // Set the position after the marker 
@@ -723,15 +723,15 @@ Image* decode_image(FileData* image_file) {
                 break;
         }
         
-        CHECK_ERROR_FLAG(image) image;
+        CHECK_ERROR_FLAG(image);
 
     }
 
     debug_print(BLUE, "\n");
     debug_print(BLUE, "decoding image...\n");
     if (mcus_to_image(image, data_tables)) {
-        image -> error = 10;
-        return image;
+        (image -> image_data).error = 10;
+        return image -> image_data;
     }
 
 
@@ -742,9 +742,9 @@ Image* decode_image(FileData* image_file) {
 
     debug_print(YELLOW, "\n");
     
-    debug_print(BLUE, "size: %u\n", image -> size);
+    debug_print(BLUE, "size: %u\n", (image -> image_data).size);
 
-    return image;
+    return (image -> image_data);
 }
 
 #endif  

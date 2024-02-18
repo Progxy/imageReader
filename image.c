@@ -3,19 +3,19 @@
 #include <gtk/gtk.h>
 #undef FALSE
 #undef TRUE
-#include "./include/decode_img.h"
+#include "./include/decode_jpeg.h"
 
 static gboolean on_draw_event(GtkWidget *widget, cairo_t *cr, gpointer user_data) {
-    (void)widget;
-    Image* pixels = (Image*) user_data;
+    (void) widget;
+    Image* image = (Image*) user_data;
     unsigned int offset_x = 25;
     unsigned int offset_y = 25;
         
-    for (unsigned int i = 0; i < pixels -> height; ++i) {
-        for (unsigned int j = 0; j < pixels -> width; ++j) {
-            unsigned int pos = i * pixels -> width * 3 + j * 3;
+    for (unsigned int i = 0; i < image -> height; ++i) {
+        for (unsigned int j = 0; j < image -> width; ++j) {
+            unsigned int pos = i * image -> width * 3 + j * 3;
             // Set the color (RGBA) for the pixel
-            cairo_set_source_rgba(cr, (pixels -> decoded_data)[pos] / 255.0, (pixels -> decoded_data)[pos + 1] / 255.0, (pixels -> decoded_data)[pos + 2] / 255.0, 1.0);
+            cairo_set_source_rgba(cr, (image -> decoded_data)[pos] / 255.0, (image -> decoded_data)[pos + 1] / 255.0, (image -> decoded_data)[pos + 2] / 255.0, 1.0);
             // Draw a filled rectangle (pixel) at position (x, y) with a width and height of 1
             cairo_rectangle(cr, j + offset_x, i + offset_y, 1.0, 1.0);
             cairo_fill(cr);
@@ -25,7 +25,7 @@ static gboolean on_draw_event(GtkWidget *widget, cairo_t *cr, gpointer user_data
     return 0; // Event handled, no need to propagate further
 }
 
-void draw_image(char* filename, Image* pixels) {
+void draw_image(char* filename, Image* image) {
     int count = 1;
     char** data = (char**) calloc(1, sizeof(char*));
     // Select a name
@@ -39,7 +39,7 @@ void draw_image(char* filename, Image* pixels) {
     gtk_container_add(GTK_CONTAINER(window), drawing_area);
 
     // Connect the draw event to the callback function
-    g_signal_connect(G_OBJECT(drawing_area), "draw", G_CALLBACK(on_draw_event), (void*) pixels);
+    g_signal_connect(G_OBJECT(drawing_area), "draw", G_CALLBACK(on_draw_event), (void*) image);
 
     g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
 
@@ -64,15 +64,15 @@ int main(int argc, char** argv) {
         return status;
     }
 
-    Image* image = decode_image(image_file);
+    Image image = decode_image(image_file);
 
-    if (image -> error) {
-        image -> error = CLAMP(image -> error, 0, 10);
-        error_print("terminate the program with the error code: %s\n", err_codes[image -> error]);
-        return (image -> error);
+    if (image.error) {
+        image.error = CLAMP(image.error, 0, 10);
+        error_print("terminate the program with the error code: %s\n", err_codes[image.error]);
+        return (image.error);
     }
 
-    draw_image(file_name, image);
+    draw_image(file_name, &image);
 
     if ((status = create_ppm_image(image, "./out/new_image.ppm"))) {
         return status;

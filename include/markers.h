@@ -19,7 +19,7 @@ bool is_marker(unsigned char data) {
     return FALSE;
 }
 
-unsigned short int get_marker_len(Image* image) {
+unsigned short int get_marker_len(JPEG_Image* image) {
     unsigned short int length = (get_next_byte_uc(image -> bit_stream) << 8) | get_next_byte_uc(image -> bit_stream); 
 
     // Check that the length is valid

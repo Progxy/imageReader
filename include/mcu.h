@@ -201,10 +201,10 @@ void decode_mcu(MCU mcu, DataTables* data_table, long double* t_m, long double* 
     return;
 }
 
-unsigned char mcus_to_image(Image* image, DataTables* data_table) {
+unsigned char mcus_to_image(JPEG_Image* image, DataTables* data_table) {
     MCU* mcus = image -> mcus;
-    image -> decoded_data = (unsigned char*) calloc(3 * (image -> width * image -> height + 1), sizeof(unsigned char));
-    image -> size = 0;
+    (image -> image_data).decoded_data = (unsigned char*) calloc(3 * ((image -> image_data).width * (image -> image_data).height + 1), sizeof(unsigned char));
+    (image -> image_data).size = 0;
 
     if (image -> mcu_x * image -> mcu_y > image -> mcu_count) {
         error_print("invalid mcu_count size: %u, expected: %u\n", image -> mcu_count, image -> mcu_x * image -> mcu_y);
@@ -217,23 +217,23 @@ unsigned char mcus_to_image(Image* image, DataTables* data_table) {
     }
 
     unsigned int mcu_x = image -> mcu_x;
-    for (unsigned int h = 0; h < image -> height; ++h) {
+    for (unsigned int h = 0; h < (image -> image_data).height; ++h) {
         unsigned int r = (h - (h % (8 * data_table -> max_sf_v))) / (8 * data_table -> max_sf_v);
         unsigned int h1 = h - (8 * r * data_table -> max_sf_v);
         unsigned int du_y = (h1 - (h1 % 8)) / 8;
-        for (unsigned int w = 0; w < image -> width; ++w) {
+        for (unsigned int w = 0; w < (image -> image_data).width; ++w) {
             unsigned int c = (w - (w % (8 * data_table -> max_sf_h))) / (8 * data_table -> max_sf_h);
             unsigned int w1 = w - (8 * c * data_table -> max_sf_h);
             unsigned int du_x = (w1 - (w1 % 8)) / 8;
-            (image -> decoded_data)[image -> size] = rgbs[r * mcu_x + c][du_y * data_table -> max_sf_h + du_x].R[8 * (h1 % 8) + (w1 % 8)];
-            (image -> decoded_data)[image -> size + 1] = rgbs[r * mcu_x + c][du_y * data_table -> max_sf_h + du_x].G[8 * (h1 % 8) + (w1 % 8)];
-            (image -> decoded_data)[image -> size + 2] = rgbs[r * mcu_x + c][du_y * data_table -> max_sf_h + du_x].B[8 * (h1 % 8) + (w1 % 8)];
-            (image -> size) += 3;
+            ((image -> image_data).decoded_data)[(image -> image_data).size] = rgbs[r * mcu_x + c][du_y * data_table -> max_sf_h + du_x].R[8 * (h1 % 8) + (w1 % 8)];
+            ((image -> image_data).decoded_data)[(image -> image_data).size + 1] = rgbs[r * mcu_x + c][du_y * data_table -> max_sf_h + du_x].G[8 * (h1 % 8) + (w1 % 8)];
+            ((image -> image_data).decoded_data)[(image -> image_data).size + 2] = rgbs[r * mcu_x + c][du_y * data_table -> max_sf_h + du_x].B[8 * (h1 % 8) + (w1 % 8)];
+            ((image -> image_data).size) += 3;
         }
     }
 
     // Resize the decoded data
-    image -> decoded_data = (unsigned char*) realloc(image -> decoded_data, image -> size);
+    (image -> image_data).decoded_data = (unsigned char*) realloc((image -> image_data).decoded_data, (image -> image_data).size);
     free(rgbs);
 
     return FALSE;
@@ -247,7 +247,7 @@ void deallocate_mcu(MCU mcu) {
     return;
 }
 
-void deallocate_mcus(Image* image) {
+void deallocate_mcus(JPEG_Image* image) {
     for (unsigned int i = 0; i < image -> mcu_count; ++i) {
         deallocate_mcu((image -> mcus)[i]);
     }

@@ -60,24 +60,6 @@ typedef struct FileData {
     unsigned char* data;
 } FileData;
 
-typedef struct Image {
-    FileData image_file;
-    BitStream* bit_stream;
-    unsigned int width;
-    unsigned int height;
-    unsigned char* decoded_data;
-    unsigned int size;
-    unsigned char components;
-    MCU* mcus;
-    unsigned int mcu_count;
-    ImageError error;
-    unsigned short int mcu_per_line;
-    int is_exif;
-    unsigned int mcu_x;
-    unsigned int mcu_y;
-    JPEG_Type jpeg_type;
-} Image;
-
 typedef struct DataTables {
     HuffmanData* hf_dc;
     HuffmanData* hf_ac;
@@ -106,6 +88,28 @@ typedef struct RGB {
     unsigned char* G;
     unsigned char* B;
 } RGB;
+
+typedef struct Image {
+    unsigned int width;
+    unsigned int height;
+    unsigned char* decoded_data;
+    unsigned int size;
+    unsigned char components;
+    ImageError error;
+} Image;
+
+typedef struct JPEG_Image {
+    Image image_data;
+    BitStream* bit_stream;
+    FileData image_file;
+    MCU* mcus;
+    unsigned int mcu_count;
+    unsigned short int mcu_per_line;
+    int is_exif;
+    unsigned int mcu_x;
+    unsigned int mcu_y;
+    JPEG_Type jpeg_type;
+} JPEG_Image;
 
 #define SET_COLOR(color) printf("\033[%d;1m", color)
 #define RESET_COLOR() printf("\033[0m")

@@ -46,7 +46,7 @@ bool read_image_file(FileData* image_file, const char* filename) {
     return NO_ERROR;
 }
 
-bool create_ppm_image(Image* image, const char* filename) {
+bool create_ppm_image(Image image, const char* filename) {
     FILE* file = fopen(filename, "wb");
 
     debug_print(YELLOW, "\n");
@@ -66,7 +66,7 @@ bool create_ppm_image(Image* image, const char* filename) {
     }
 
     char size_info[35];
-    unsigned int info_len = snprintf(size_info, 35, "%d %d\n255\n", image -> width, image -> height);
+    unsigned int info_len = snprintf(size_info, 35, "%d %d\n255\n", image.width, image.height);
     fwrite(size_info, sizeof(char), info_len, file);
 
     // Check for errors
@@ -75,10 +75,10 @@ bool create_ppm_image(Image* image, const char* filename) {
         return FILE_ERROR;
     }
 
-    unsigned int b_w = fwrite(image -> decoded_data, 1, image -> size, file);
+    unsigned int b_w = fwrite(image.decoded_data, 1, image.size, file);
 
-    if (b_w != image -> size) {
-        debug_print(PURPLE, "Diff in size: %u - %u\n", b_w, image -> size);
+    if (b_w != image.size) {
+        debug_print(PURPLE, "Diff in size: %u - %u\n", b_w, image.size);
     }
 
     // Check for errors
@@ -90,7 +90,7 @@ bool create_ppm_image(Image* image, const char* filename) {
     fclose(file);
 
     debug_print(GREEN, "file %s successfully created!\n", filename);
-    debug_print(GREEN, "copied %u bytes out of the expected %u\n\n", b_w, image -> components * image -> width * image -> height);
+    debug_print(GREEN, "copied %u bytes out of the expected %u\n\n", b_w, image.components * image.width * image.height);
 
     return NO_ERROR;
 }
