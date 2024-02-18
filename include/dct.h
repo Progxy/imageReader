@@ -26,4 +26,4 @@ void mul_mat(int** mat, long double* mat_b, long double* mat_c, unsigned int siz
     return;
 }
 
-#endif
+#endif //_DCT_H_

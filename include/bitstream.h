@@ -96,4 +96,4 @@ void set_byte(BitStream* bit_stream, unsigned int byte) {
     return;
 }
 
-#endif // _BIT_STREAM_H_
+#endif //_BIT_STREAM_H_

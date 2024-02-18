@@ -1,5 +1,5 @@
-#ifndef _DECODE_IMG_H_
-#define _DECODE_IMG_H_
+#ifndef _DECODE_JPEG_H_
+#define _DECODE_JPEG_H_
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -19,26 +19,27 @@
 
 static const char* component_types[] = {"Y", "Cb", "Cr", "I", "Q"};
 
-// DEFINITIONS
+/* -------------------------------------------------------------------------------------- */
 
-void decode_app(JPEG_Image* image, unsigned char marker_code);
-
-void decode_dqt(JPEG_Image* image, DataTables* data_tables);
-
-void decode_sof(JPEG_Image* image, DataTables* data_tables, unsigned char marker_code);
-
-void decode_sos(JPEG_Image* image, DataTables* data_tables);
-
-void decode_dht(JPEG_Image* image, DataTables* data_tables);
-
-void decode_data(JPEG_Image* image, DataTables* data_tables, unsigned char* image_data, unsigned int image_size);
-
-Image decode_image(FileData* image_file);
+static Component* get_component_by_id(DataTables* data_tables, unsigned char component_id);
+static bool jpeg_type_is_supported(JPEGType jpeg_type);
+static void decode_com(JPEG_Image* image);
+static void decode_app(JPEG_Image* image, unsigned char marker_code);
+static void decode_dqt(JPEG_Image* image, DataTables* data_tables);
+static unsigned char max_val(unsigned char* vec, unsigned char len);
+static void decode_sof(JPEG_Image* image, DataTables* data_tables, unsigned char marker_code);
+static void decode_sos(JPEG_Image* image, DataTables* data_tables);
+static void decode_dri(JPEG_Image* image);
+static void decode_rst(JPEG_Image* image, unsigned char interval_count, unsigned int data_len, DataTables* data_tables);
+static void decode_dht(JPEG_Image* image, DataTables* data_tables);
+static void deallocate_data_table(DataTables* data_tables);
+static void decode_data(JPEG_Image* image, DataTables* data_tables, unsigned char* image_data, unsigned int image_size);
+static DataTables* init_data_tables();
+Image decode_jpeg(FileData* image_file);
 
 /* -------------------------------------------------------------------------------------- */
-// IMPLEMENTATIONS
 
-Component* get_component_by_id(DataTables* data_tables, unsigned char component_id) {
+static Component* get_component_by_id(DataTables* data_tables, unsigned char component_id) {
     Component* components = data_tables -> components;
 
     for (unsigned int i = 0; i < data_tables -> components_count; ++i, ++components) {
@@ -50,7 +51,7 @@ Component* get_component_by_id(DataTables* data_tables, unsigned char component_
     return NULL;
 }
 
-bool jpeg_type_is_supported(JPEG_Type jpeg_type) {
+static bool jpeg_type_is_supported(JPEGType jpeg_type) {
     for (unsigned char i = 0; i < type_supported_count; ++i) {
         if (jpeg_type == type_supported[i]) {
             return TRUE;
@@ -59,7 +60,7 @@ bool jpeg_type_is_supported(JPEG_Type jpeg_type) {
     return FALSE;
 }
 
-void decode_com(JPEG_Image* image) {
+static void decode_com(JPEG_Image* image) {
     BitStream* bit_stream = image -> bit_stream;
     debug_print(PURPLE, "COM marker found at byte: %d: \n", bit_stream -> byte);
 
@@ -91,7 +92,7 @@ void decode_com(JPEG_Image* image) {
     return;
 }
 
-void decode_app(JPEG_Image* image, unsigned char marker_code) {
+static void decode_app(JPEG_Image* image, unsigned char marker_code) {
     BitStream* bit_stream = image -> bit_stream;
 
     debug_print(PURPLE, "APP%d marker found at byte: %d: \n", marker_code - 0xE0, bit_stream -> byte);
@@ -150,7 +151,7 @@ void decode_app(JPEG_Image* image, unsigned char marker_code) {
     return;
 }
 
-void decode_dqt(JPEG_Image* image, DataTables* data_tables) {
+static void decode_dqt(JPEG_Image* image, DataTables* data_tables) {
     BitStream* bit_stream = image -> bit_stream;
     debug_print(PURPLE, "DQT marker found at byte: %d: \n", bit_stream -> byte);
 
@@ -202,7 +203,7 @@ void decode_dqt(JPEG_Image* image, DataTables* data_tables) {
     return;
 }
 
-unsigned char max_val(unsigned char* vec, unsigned char len) {
+static unsigned char max_val(unsigned char* vec, unsigned char len) {
     unsigned char max = 0;
     for (unsigned char i = 0; i < len; ++len) {
         max = max < vec[i] ? vec[i] : max;
@@ -210,7 +211,7 @@ unsigned char max_val(unsigned char* vec, unsigned char len) {
     return max;
 }
 
-void decode_sof(JPEG_Image* image, DataTables* data_tables, unsigned char marker_code) {
+static void decode_sof(JPEG_Image* image, DataTables* data_tables, unsigned char marker_code) {
     BitStream* bit_stream = image -> bit_stream;
     debug_print(PURPLE, "SOF%d marker found at byte: %d!\n", marker_code - 0xC0, bit_stream -> byte);
 
@@ -308,7 +309,7 @@ void decode_sof(JPEG_Image* image, DataTables* data_tables, unsigned char marker
     return;
 }
 
-void decode_sos(JPEG_Image* image, DataTables* data_tables) {
+static void decode_sos(JPEG_Image* image, DataTables* data_tables) {
     BitStream* bit_stream = image -> bit_stream;
     debug_print(PURPLE, "SOS marker found at byte: %d: \n", bit_stream -> byte);
 
@@ -378,7 +379,7 @@ void decode_sos(JPEG_Image* image, DataTables* data_tables) {
     return;
 }
 
-void decode_dri(JPEG_Image* image) {
+static void decode_dri(JPEG_Image* image) {
     BitStream* bit_stream = image -> bit_stream;
     debug_print(PURPLE, " DRI marker found at byte: %d: \n", (bit_stream) -> byte);
     
@@ -400,7 +401,7 @@ void decode_dri(JPEG_Image* image) {
     return;
 }
 
-void decode_rst(JPEG_Image* image, unsigned char interval_count, unsigned int data_len, DataTables* data_tables) {
+static void decode_rst(JPEG_Image* image, unsigned char interval_count, unsigned int data_len, DataTables* data_tables) {
     BitStream* bit_stream = image -> bit_stream;
 
     debug_print(PURPLE, "RST%d marker found at byte: %d: \n", interval_count, bit_stream -> byte);
@@ -418,7 +419,7 @@ void decode_rst(JPEG_Image* image, unsigned char interval_count, unsigned int da
     return;
 }
 
-void decode_dht(JPEG_Image* image, DataTables* data_tables) {
+static void decode_dht(JPEG_Image* image, DataTables* data_tables) {
     BitStream* bit_stream = image -> bit_stream;
     debug_print(PURPLE, "DHT marker found at byte: %d: \n", bit_stream -> byte);
 
@@ -511,7 +512,7 @@ void decode_dht(JPEG_Image* image, DataTables* data_tables) {
     return;
 }
 
-void deallocate_data_table(DataTables* data_tables) {
+static void deallocate_data_table(DataTables* data_tables) {
     debug_print(BLUE, "deallocating data table...\n");
 
     // Deallocate DataTable
@@ -554,7 +555,7 @@ void deallocate_data_table(DataTables* data_tables) {
     return;
 }
 
-void decode_data(JPEG_Image* image, DataTables* data_tables, unsigned char* image_data, unsigned int image_size) {
+static void decode_data(JPEG_Image* image, DataTables* data_tables, unsigned char* image_data, unsigned int image_size) {
     unsigned short int err = 0;
     unsigned char components = data_tables -> components_count;
     BitStream* bit_stream = allocate_bit_stream(image_data, image_size);
@@ -614,7 +615,7 @@ void decode_data(JPEG_Image* image, DataTables* data_tables, unsigned char* imag
     return;
 }
 
-DataTables* init_data_tables() {
+static DataTables* init_data_tables() {
     DataTables* data_tables = (DataTables*) calloc(1, sizeof(DataTables));
     data_tables -> hf_dc = (HuffmanData*) calloc(1, sizeof(HuffmanData));
     data_tables -> hf_dc_count = 0;
@@ -626,7 +627,7 @@ DataTables* init_data_tables() {
     return data_tables;
 }
 
-Image decode_image(FileData* image_file) {
+Image decode_jpeg(FileData* image_file) {
     // Init image struct
     JPEG_Image* image = (JPEG_Image*) calloc(1, sizeof(JPEG_Image));
     image -> image_file = *image_file;
@@ -747,4 +748,4 @@ Image decode_image(FileData* image_file) {
     return (image -> image_data);
 }
 
-#endif  
+#endif //_DECODE_JPEG_H_

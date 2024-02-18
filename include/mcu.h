@@ -22,7 +22,26 @@ const unsigned char zigzag[64] = {
     35, 36, 48, 49, 57, 58, 62, 63,
 };
 
-void unzigzag_vec(int** data) {
+/* -------------------------------------------------------------------------------------- */
+
+static void unzigzag_vec(int** data);
+static void dequantize_data_unit(int* data_unit, unsigned char* quantization_table);
+long double* generate_m();
+long double* generate_tm(long double* m);
+static long double round_colour(long double val);
+static void ycbcr_to_rgb(int* y, int* cb, int* cr, RGB* rgb);
+static void ycbcr_to_greyscale(int* y, RGB* rgb);
+static float bilinear_interpolation(float x, float y, float q11, float q12, float q21, float q22);
+static int** upsample(unsigned char sf_h, unsigned char sf_v, int* data);
+static RGB* mcu_to_rgb(MCU mcu, DataTables* data_table);
+void decode_mcu(MCU mcu, DataTables* data_table, long double* t_m, long double* m);
+unsigned char mcus_to_image(JPEG_Image* image, DataTables* data_table);
+void deallocate_mcu(MCU mcu);
+void deallocate_mcus(JPEG_Image* image);
+
+/* -------------------------------------------------------------------------------------- */
+
+static void unzigzag_vec(int** data) {
     int* temp_vec = (int*) calloc(64, sizeof(int));
 
     // Unzigzag the matrix
@@ -39,7 +58,7 @@ void unzigzag_vec(int** data) {
     return;
 }
 
-void dequantize_data_unit(int* data_unit, unsigned char* quantization_table) {
+static void dequantize_data_unit(int* data_unit, unsigned char* quantization_table) {
     for (unsigned char i = 0; i < 64; ++i) {
         data_unit[i] *= quantization_table[i];
     }
@@ -75,11 +94,11 @@ long double* generate_tm(long double* m) {
     return t_m;
 }
 
-long double round_colour(long double val) {
+static long double round_colour(long double val) {
     return ceill(val + 0.5L);
 }
 
-void ycbcr_to_rgb(int* y, int* cb, int* cr, RGB* rgb) {
+static void ycbcr_to_rgb(int* y, int* cb, int* cr, RGB* rgb) {
     // Convert the values from YCbCr to RGB
     // Clip the value between 0 and 255
     for (unsigned char i = 0; i < 64; ++i) {
@@ -94,7 +113,7 @@ void ycbcr_to_rgb(int* y, int* cb, int* cr, RGB* rgb) {
     return;
 }
 
-void ycbcr_to_greyscale(int* y, RGB* rgb) {
+static void ycbcr_to_greyscale(int* y, RGB* rgb) {
     for (unsigned char j = 0; j < 64; ++j) {
         (rgb -> R)[j] = CLAMP(y[j] + 128, 0, 255);
         (rgb -> G)[j] = CLAMP(y[j] + 128, 0, 255);
@@ -103,14 +122,13 @@ void ycbcr_to_greyscale(int* y, RGB* rgb) {
     return;
 }
 
-// Bilinear interpolation function
-float bilinear_interpolation(float x, float y, float q11, float q12, float q21, float q22) {
+static float bilinear_interpolation(float x, float y, float q11, float q12, float q21, float q22) {
     float r1 = (q21 - q11) * x + q11;
     float r2 = (q22 - q12) * x + q12;
     return (r2 - r1) * y + r1;
 }
 
-int** upsample(unsigned char sf_h, unsigned char sf_v, int* data) {
+static int** upsample(unsigned char sf_h, unsigned char sf_v, int* data) {
     int** new_data = (int**) calloc(sf_h * sf_v, sizeof(int*));
     
     for (unsigned char i = 0; i < sf_h * sf_v; ++i) {
@@ -146,7 +164,7 @@ int** upsample(unsigned char sf_h, unsigned char sf_v, int* data) {
     return new_data;
 }
 
-RGB* mcu_to_rgb(MCU mcu, DataTables* data_table) {
+static RGB* mcu_to_rgb(MCU mcu, DataTables* data_table) {
     // Init RGB values
     RGB* rgb = (RGB*) calloc(mcu.max_du, sizeof(RGB));
     for (unsigned char i = 0; i < mcu.max_du; ++i) {
@@ -255,4 +273,4 @@ void deallocate_mcus(JPEG_Image* image) {
     return;
 }
 
-#endif // _MCU_H_
+#endif //_MCU_H_

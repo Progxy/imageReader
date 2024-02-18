@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
         return status;
     }
 
-    Image image = decode_image(image_file);
+    Image image = decode_jpeg(image_file);
 
     if (image.error) {
         image.error = CLAMP(image.error, 0, 10);

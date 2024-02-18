@@ -301,4 +301,4 @@ MCU generate_mcu(unsigned char components, BitStream* bit_stream, DataTables* da
     return mcu;
 }
 
-#endif /* _DECODE_HF_ */
+#endif //_DECODE_HF_

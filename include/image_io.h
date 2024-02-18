@@ -6,7 +6,16 @@
 #include "./debug_print.h"
 #include "./types.h"
 
-#define CHECK_FILE_TYPE(data) ((data)[0] == 0xFF && (data)[1] == 0xD8)
+#define CHECK_JPEG(data) ((data)[0] == 0xFF && (data)[1] == 0xD8)
+
+static bool check_image_file(FileData* image_file) {
+    if (CHECK_JPEG(image_file -> data)) {
+        image_file -> file_type = JPEG;
+        return TRUE;
+    }
+
+    return TRUE;
+}
 
 bool read_image_file(FileData* image_file, const char* filename) {
     FILE* file = fopen(filename, "rb");
@@ -36,12 +45,12 @@ bool read_image_file(FileData* image_file, const char* filename) {
 
     fclose(file);
     
-    if (!CHECK_FILE_TYPE(image_file -> data)) {
+    if (!check_image_file(image_file)) {
         error_print("invalid type of file!\n");
         return INVALID_FILE_TYPE;
     }
 
-    debug_print(GREEN, "The current image file is valid!\n\n");
+    debug_print(GREEN, "The current image file is valid %s!\n\n", file_types[image_file -> file_type]);
 
     return NO_ERROR;
 }

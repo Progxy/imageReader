@@ -70,4 +70,4 @@ MarkersTable get_markers(FileData* image_file) {
     return markers_table;
 }
 
-#endif // _MARKERS_H_
+#endif //_MARKERS_H_
