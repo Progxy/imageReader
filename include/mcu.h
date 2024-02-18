@@ -146,25 +146,6 @@ void decode_mcu(MCU mcu, DataTables* data_table, long double* t_m, long double* 
     return;
 }
 
-    // for (unsigned int i = 0; i < pixels -> mcu_y; ++i) {
-    //     for (unsigned int j = 0; j < pixels -> mcu_x; ++j) {
-    //         for (unsigned char du_index = 0; du_index < pixels -> du_count; ++du_index) {
-    //             for (unsigned char x = 0; x < 8; ++x) { 
-    //                 for (unsigned char y = 0; y < 8; ++y) {
-    //                     unsigned int p_x = (j * 8 * pixels -> du_x) + (du_index % 2) * 8 + x + offset_x + j * 5; 
-    //                     unsigned int p_y = (i * 8 * pixels -> du_y) + (du_index > 1) * 8 + y + offset_y + i * 5;
-    //                     // Set the color (RGBA) for the pixel
-    //                     cairo_set_source_rgba(cr, (pixels -> pixels_data)[p_index] / 255.0, (pixels -> pixels_data)[p_index + 1] / 255.0, (pixels -> pixels_data)[p_index + 2] / 255.0, 1.0);
-    //                     // Draw a filled rectangle (pixel) at position (x, y) with a width and height of 1
-    //                     cairo_rectangle(cr, p_x, p_y, 1.0, 1.0);
-    //                     cairo_fill(cr);
-    //                     p_index += 3;
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
 unsigned char mcus_to_image(Image* image, DataTables* data_table) {
     MCU* mcus = image -> mcus;
     image -> decoded_data = (unsigned char*) calloc(3 * (image -> width * image -> height + 1), sizeof(unsigned char));
