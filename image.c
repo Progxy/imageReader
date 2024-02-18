@@ -1,3 +1,5 @@
+// Usage example: use gtk to print the image on a new window 
+
 #include <gtk/gtk.h>
 #undef FALSE
 #undef TRUE
