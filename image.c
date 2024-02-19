@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
     }
 
     if (image.error) {
-        image.error = CLAMP(image.error, 0, 11);
+        image.error = CLAMP(image.error, 0, sizeof(err_codes) / sizeof(err_codes[0]));
         error_print("terminate the program with the error code: %s\n", err_codes[image.error]);
         return (image.error);
     }

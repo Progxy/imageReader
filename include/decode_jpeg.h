@@ -234,7 +234,7 @@ static void decode_sof(JPEGImage* image, DataTables* data_tables, unsigned char 
     // Check that the height is valid
     if ((image -> image_data).height <= 0) {
         error_print("Invalid image height!\n");
-        (image -> image_data).error = INVALID_IMAGE_HEIGHT;
+        (image -> image_data).error = INVALID_IMAGE_SIZE;
         return;
     }
 
@@ -245,7 +245,7 @@ static void decode_sof(JPEGImage* image, DataTables* data_tables, unsigned char 
     // Check that the height is valid
     if ((image -> image_data).width <= 0) {
         error_print("Invalid image width!\n");
-        (image -> image_data).error = INVALID_IMAGE_WIDTH;
+        (image -> image_data).error = INVALID_IMAGE_SIZE;
         return;
     }
 
