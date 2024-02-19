@@ -35,9 +35,9 @@ static float bilinear_interpolation(float x, float y, float q11, float q12, floa
 static int** upsample(unsigned char sf_h, unsigned char sf_v, int* data);
 static RGB* mcu_to_rgb(MCU mcu, DataTables* data_table);
 void decode_mcu(MCU mcu, DataTables* data_table, long double* t_m, long double* m);
-unsigned char mcus_to_image(JPEG_Image* image, DataTables* data_table);
+unsigned char mcus_to_image(JPEGImage* image, DataTables* data_table);
 void deallocate_mcu(MCU mcu);
-void deallocate_mcus(JPEG_Image* image);
+void deallocate_mcus(JPEGImage* image);
 
 /* -------------------------------------------------------------------------------------- */
 
@@ -219,7 +219,7 @@ void decode_mcu(MCU mcu, DataTables* data_table, long double* t_m, long double* 
     return;
 }
 
-unsigned char mcus_to_image(JPEG_Image* image, DataTables* data_table) {
+unsigned char mcus_to_image(JPEGImage* image, DataTables* data_table) {
     MCU* mcus = image -> mcus;
     (image -> image_data).decoded_data = (unsigned char*) calloc(3 * ((image -> image_data).width * (image -> image_data).height + 1), sizeof(unsigned char));
     (image -> image_data).size = 0;
@@ -265,7 +265,7 @@ void deallocate_mcu(MCU mcu) {
     return;
 }
 
-void deallocate_mcus(JPEG_Image* image) {
+void deallocate_mcus(JPEGImage* image) {
     for (unsigned int i = 0; i < image -> mcu_count; ++i) {
         deallocate_mcu((image -> mcus)[i]);
     }

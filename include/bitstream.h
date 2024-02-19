@@ -96,4 +96,12 @@ void set_byte(BitStream* bit_stream, unsigned int byte) {
     return;
 }
 
+unsigned int get_next_bytes_ui(BitStream* bit_stream) {
+    unsigned int bytes = 0;
+    for (unsigned char j = 0; j < 4; ++j) {
+        bytes |= get_next_byte_uc(bit_stream) << ((3 - j) * 8);
+    }
+    return bytes;
+}
+
 #endif //_BIT_STREAM_H_

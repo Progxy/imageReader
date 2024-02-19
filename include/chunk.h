@@ -42,11 +42,12 @@ Chunks find_and_check_chunks(unsigned char* file_data, unsigned int file_length)
     BitStream* bit_stream = allocate_bit_stream(file_data, file_length);
     unsigned int* crc_table = generate_crc_table();
     
+    // Skip the PNG magic number
+    set_byte(bit_stream, 8);
+
     while (bit_stream -> byte < bit_stream -> size) {
         Chunk chunk = (Chunk) {};
-        for (unsigned char j = 0; j < 4; ++j) {
-            chunk.length |= get_next_byte_uc(bit_stream) << ((3 - j) * 8);
-        }
+        chunk.length = get_next_bytes_ui(bit_stream);
 
         chunk.chunk_type[4] = '\0';
         for (unsigned char j = 0; j < 4; ++j) {
@@ -56,12 +57,7 @@ Chunks find_and_check_chunks(unsigned char* file_data, unsigned int file_length)
         chunk.pos = bit_stream -> byte;
         set_byte(bit_stream, bit_stream -> byte - 4);
         unsigned int chunk_crc = calculate_crc(bit_stream, chunk.length + 4, crc_table);
-
-
-        unsigned int crc = 0;
-        for (unsigned char j = 0; j < 4; ++j) {
-            crc |= get_next_byte_uc(bit_stream) << ((3 - j) * 8);
-        }
+        unsigned int crc = get_next_bytes_ui(bit_stream);
 
         if (chunk_crc != crc) {
             warning_print("the current chunk may be corrupted!\n");

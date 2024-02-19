@@ -23,17 +23,17 @@ static const char* component_types[] = {"Y", "Cb", "Cr", "I", "Q"};
 
 static Component* get_component_by_id(DataTables* data_tables, unsigned char component_id);
 static bool jpeg_type_is_supported(JPEGType jpeg_type);
-static void decode_com(JPEG_Image* image);
-static void decode_app(JPEG_Image* image, unsigned char marker_code);
-static void decode_dqt(JPEG_Image* image, DataTables* data_tables);
+static void decode_com(JPEGImage* image);
+static void decode_app(JPEGImage* image, unsigned char marker_code);
+static void decode_dqt(JPEGImage* image, DataTables* data_tables);
 static unsigned char max_val(unsigned char* vec, unsigned char len);
-static void decode_sof(JPEG_Image* image, DataTables* data_tables, unsigned char marker_code);
-static void decode_sos(JPEG_Image* image, DataTables* data_tables);
-static void decode_dri(JPEG_Image* image);
-static void decode_rst(JPEG_Image* image, unsigned char interval_count, unsigned int data_len, DataTables* data_tables);
-static void decode_dht(JPEG_Image* image, DataTables* data_tables);
+static void decode_sof(JPEGImage* image, DataTables* data_tables, unsigned char marker_code);
+static void decode_sos(JPEGImage* image, DataTables* data_tables);
+static void decode_dri(JPEGImage* image);
+static void decode_rst(JPEGImage* image, unsigned char interval_count, unsigned int data_len, DataTables* data_tables);
+static void decode_dht(JPEGImage* image, DataTables* data_tables);
 static void deallocate_data_table(DataTables* data_tables);
-static void decode_data(JPEG_Image* image, DataTables* data_tables, unsigned char* image_data, unsigned int image_size);
+static void decode_data(JPEGImage* image, DataTables* data_tables, unsigned char* image_data, unsigned int image_size);
 static DataTables* init_data_tables();
 Image decode_jpeg(FileData* image_file);
 
@@ -60,7 +60,7 @@ static bool jpeg_type_is_supported(JPEGType jpeg_type) {
     return FALSE;
 }
 
-static void decode_com(JPEG_Image* image) {
+static void decode_com(JPEGImage* image) {
     BitStream* bit_stream = image -> bit_stream;
     debug_print(PURPLE, "COM marker found at byte: %d: \n", bit_stream -> byte);
 
@@ -92,7 +92,7 @@ static void decode_com(JPEG_Image* image) {
     return;
 }
 
-static void decode_app(JPEG_Image* image, unsigned char marker_code) {
+static void decode_app(JPEGImage* image, unsigned char marker_code) {
     BitStream* bit_stream = image -> bit_stream;
 
     debug_print(PURPLE, "APP%d marker found at byte: %d: \n", marker_code - 0xE0, bit_stream -> byte);
@@ -151,7 +151,7 @@ static void decode_app(JPEG_Image* image, unsigned char marker_code) {
     return;
 }
 
-static void decode_dqt(JPEG_Image* image, DataTables* data_tables) {
+static void decode_dqt(JPEGImage* image, DataTables* data_tables) {
     BitStream* bit_stream = image -> bit_stream;
     debug_print(PURPLE, "DQT marker found at byte: %d: \n", bit_stream -> byte);
 
@@ -211,7 +211,7 @@ static unsigned char max_val(unsigned char* vec, unsigned char len) {
     return max;
 }
 
-static void decode_sof(JPEG_Image* image, DataTables* data_tables, unsigned char marker_code) {
+static void decode_sof(JPEGImage* image, DataTables* data_tables, unsigned char marker_code) {
     BitStream* bit_stream = image -> bit_stream;
     debug_print(PURPLE, "SOF%d marker found at byte: %d!\n", marker_code - 0xC0, bit_stream -> byte);
 
@@ -309,7 +309,7 @@ static void decode_sof(JPEG_Image* image, DataTables* data_tables, unsigned char
     return;
 }
 
-static void decode_sos(JPEG_Image* image, DataTables* data_tables) {
+static void decode_sos(JPEGImage* image, DataTables* data_tables) {
     BitStream* bit_stream = image -> bit_stream;
     debug_print(PURPLE, "SOS marker found at byte: %d: \n", bit_stream -> byte);
 
@@ -379,7 +379,7 @@ static void decode_sos(JPEG_Image* image, DataTables* data_tables) {
     return;
 }
 
-static void decode_dri(JPEG_Image* image) {
+static void decode_dri(JPEGImage* image) {
     BitStream* bit_stream = image -> bit_stream;
     debug_print(PURPLE, " DRI marker found at byte: %d: \n", (bit_stream) -> byte);
     
@@ -401,7 +401,7 @@ static void decode_dri(JPEG_Image* image) {
     return;
 }
 
-static void decode_rst(JPEG_Image* image, unsigned char interval_count, unsigned int data_len, DataTables* data_tables) {
+static void decode_rst(JPEGImage* image, unsigned char interval_count, unsigned int data_len, DataTables* data_tables) {
     BitStream* bit_stream = image -> bit_stream;
 
     debug_print(PURPLE, "RST%d marker found at byte: %d: \n", interval_count, bit_stream -> byte);
@@ -419,7 +419,7 @@ static void decode_rst(JPEG_Image* image, unsigned char interval_count, unsigned
     return;
 }
 
-static void decode_dht(JPEG_Image* image, DataTables* data_tables) {
+static void decode_dht(JPEGImage* image, DataTables* data_tables) {
     BitStream* bit_stream = image -> bit_stream;
     debug_print(PURPLE, "DHT marker found at byte: %d: \n", bit_stream -> byte);
 
@@ -555,7 +555,7 @@ static void deallocate_data_table(DataTables* data_tables) {
     return;
 }
 
-static void decode_data(JPEG_Image* image, DataTables* data_tables, unsigned char* image_data, unsigned int image_size) {
+static void decode_data(JPEGImage* image, DataTables* data_tables, unsigned char* image_data, unsigned int image_size) {
     unsigned short int err = 0;
     unsigned char components = data_tables -> components_count;
     BitStream* bit_stream = allocate_bit_stream(image_data, image_size);
@@ -629,7 +629,7 @@ static DataTables* init_data_tables() {
 
 Image decode_jpeg(FileData* image_file) {
     // Init image struct
-    JPEG_Image* image = (JPEG_Image*) calloc(1, sizeof(JPEG_Image));
+    JPEGImage* image = (JPEGImage*) calloc(1, sizeof(JPEGImage));
     image -> image_file = *image_file;
     image -> mcu_count = 0;
     image -> mcus = (MCU*) calloc(1, sizeof(MCU));
@@ -735,11 +735,10 @@ Image decode_jpeg(FileData* image_file) {
         return image -> image_data;
     }
 
-
     debug_print(BLUE, "deallocating the mcus...\n");
     deallocate_mcus(image);
-    
     deallocate_data_table(data_tables);
+    deallocate_bit_stream(image -> bit_stream);
 
     debug_print(YELLOW, "\n");
     

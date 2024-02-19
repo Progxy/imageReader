@@ -101,7 +101,7 @@ typedef struct Image {
     ImageError error;
 } Image;
 
-typedef struct JPEG_Image {
+typedef struct JPEGImage {
     Image image_data;
     BitStream* bit_stream;
     FileData image_file;
@@ -112,7 +112,7 @@ typedef struct JPEG_Image {
     unsigned int mcu_x;
     unsigned int mcu_y;
     JPEGType jpeg_type;
-} JPEG_Image;
+} JPEGImage;
 
 typedef struct Chunk {
     unsigned int pos;
@@ -125,6 +125,16 @@ typedef struct Chunks {
     unsigned int chunks_count;
     unsigned char invalid_chunks;
 } Chunks;
+
+typedef struct PNGImage {
+    Image image_data;
+    BitStream* bit_stream;
+    unsigned char bit_depth;
+    unsigned char color_type;
+    unsigned char compression_method;
+    unsigned char filter_method;
+    unsigned char interlace_method;
+} PNGImage;
 
 #define SET_COLOR(color) printf("\033[%d;1m", color)
 #define RESET_COLOR() printf("\033[0m")
