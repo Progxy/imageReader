@@ -104,4 +104,21 @@ unsigned int get_next_bytes_ui(BitStream* bit_stream) {
     return bytes;
 }
 
+unsigned short int get_next_bytes_us(BitStream* bit_stream) {
+    unsigned short int bytes = get_next_byte_uc(bit_stream);
+    bytes = (bytes << 8) + get_next_byte_uc(bit_stream);
+    return bytes;
+}
+
+unsigned char get_next_n_bits(BitStream* bit_stream, unsigned char n_bits) {
+    unsigned char bits = 0;
+    
+    for (unsigned char i = 0; i < n_bits; ++i) {
+        bits <<= 1;
+        bits += get_next_bit(bit_stream);
+    }
+    
+    return bits;
+}
+
 #endif //_BIT_STREAM_H_
