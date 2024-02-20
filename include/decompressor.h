@@ -6,7 +6,7 @@
 #include "./types.h"
 #include "./debug_print.h"
 
-#define SLIDING_WINDOW_SIZE 0x800
+#define SLIDING_WINDOW_SIZE 0x8000
 
 unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* decompressed_data_length);
 
