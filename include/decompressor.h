@@ -28,74 +28,124 @@ unsigned char* generate_counts(unsigned char* lengths, unsigned char len, unsign
 }
 
 unsigned char* generate_hf(unsigned char* lengths, unsigned char len) {
-    unsigned short int code = 0;
     unsigned char max_bit_length = max_value(lengths, len);
     unsigned char* bl_count = generate_counts(lengths, len, max_bit_length);
     
     bl_count[0] = 0;    
     unsigned short int* next_code = (unsigned short int*) calloc(max_bit_length + 1, sizeof(unsigned short int));
     for (unsigned char bits = 1; bits <= max_bit_length; ++bits) {
-        code = (code + bl_count[bits - 1]) << 1;
-        next_code[bits] = code;
+        next_code[bits] = (next_code[bits - 1] + bl_count[bits - 1]) << 1u;
     }
     free(bl_count);
     
     unsigned char* codes = (unsigned char*) calloc(len, sizeof(unsigned char));
     for (unsigned char i = 0; i < len; ++i) {
-        codes[i] = next_code[lengths[i]]++;
+        if(lengths[i] != 0) {
+            codes[i] = next_code[lengths[i]]++;
+            /*remove superfluous bits from the code*/
+            codes[i] &= ((1u << lengths[i]) - 1u);
+        }
     }
     free(next_code);
 
     return codes;
 }
 
-unsigned char* decode_lengths(unsigned int* hf_tree) {
-    unsigned char* lengths;
-    return lengths;
+void get_tables(unsigned short int* mins, unsigned short int* maxs, unsigned short int* val_ptr, unsigned char* hf_lenghts, unsigned char* hf, unsigned char len, unsigned char bits_length) {
+    for (unsigned char i = 0; i < bits_length; ++i) {
+        mins[i] = 0xFFFF;
+    }
+    
+    for (unsigned char i = 0; i <= len; ++i) {
+        if (!hf_lenghts[i]) {
+            continue;
+        }
+
+        if (mins[hf_lenghts[i] - 1] > hf[i]) {
+            mins[hf_lenghts[i] - 1] = hf[i];
+            val_ptr[hf_lenghts[i] - 1] = i;
+        }
+
+        if (maxs[hf_lenghts[i] - 1] < hf[i]) {
+            maxs[hf_lenghts[i] - 1] = hf[i];
+        }
+    }
+    return;
 }
 
-// Procedure ReadLengths (LENGTHCOUNT, LENGTHS [])
-// Begin
-// INDEX = 0
-// While INDEX < LENGTHCOUNT DO
-// Begin
-// CODE = HuffmanDecodeInputStream ()
-// If CODE < 16 Then
-// Begin
-// LENGTHS [INDEX] = CODE
-// INDEX = INDEX + 1
-// End
-// Else If CODE = 16 Then
-// Begin
-// COUNT = 3 + ReadRawBitsFromInputStream (3)
-// For I = 1 To COUNT Do
-// Begin
-// LENGTHS [INDEX] = LENGTHS [INDEX - 1]
-// INDEX = INDEX + 1
-// End
-// End
-// Else If CODE = 17 Then
-// Begin
-// COUNT = 3 + ReadRawBitsFromInputStream (3)
-// For I = 1 To COUNT Do
-// Begin
-// LENGTHS [INDEX] = 0
-// INDEX = INDEX + 1
-// End
-// End
-// Else If CODE = 18 Then
-// Begin
-// COUNT = 11 + ReadRawBitsFromInputStream (7)
-// For I = 1 To COUNT Do
-// Begin
-// LENGTHS [INDEX] = 0
-// INDEX = INDEX + 1
-// End
-// End
-// End
-// End
+static unsigned short int decode_hf_value(BitStream* bit_stream, unsigned short int code, unsigned short int* mins, unsigned short int* maxs, unsigned short int* val_ptr, unsigned char length, bool is_fixed) {
+    for (unsigned char i = 0; i < length; ++i) {
+        if (!is_fixed) {
+            debug_print(WHITE, "code: %u, maxs: %u, mins: %u, val_ptr: %u, bit_length: %u\n", code, maxs[i], mins[i], val_ptr[i], i);
+        }
+        if (code <= maxs[i]) {
+            debug_print(CYAN, "code: %u, len: %u, result: %u\n", code, i, (code - mins[i] + val_ptr[i]));
+            return (code - mins[i] + val_ptr[i]);
+        }
 
+        if ((!is_fixed) || (i != 1)) {
+            code = (code << 1) + get_next_bit(bit_stream, TRUE);
+        }
+    }
+    
+    return 0xFFFF;
+}
 
+static unsigned short int decode_hf(BitStream* bit_stream, unsigned short int code, unsigned char* hf_length, unsigned char* codes, unsigned short int len, unsigned char bit_len) {
+    for (unsigned char i = 1; i <= bit_len; ++i) {
+        for (unsigned short int j = 0; j < len; ++j) {
+            if ((hf_length[j] == i) && (code == codes[j])) {
+                debug_print(CYAN, "code: %u, len: %u, result: %u\n", code, i, j);
+                return j;
+            }
+        }
+        code = (code << 1) + get_next_bit(bit_stream, TRUE);
+    }
+    return 0xFFFF;
+}
+
+static void decode_lengths(BitStream* bit_stream, unsigned char* hf_lengths, unsigned char* codes, unsigned short int len, unsigned char bit_length, unsigned short int literal_len, unsigned short int distance_len, unsigned char** literal_lengths, unsigned char** distance_lengths) {
+    *literal_lengths = (unsigned char*) calloc(literal_len, sizeof(unsigned char));
+    *distance_lengths = (unsigned char*) calloc(distance_len, sizeof(unsigned char));
+    unsigned short int index = 0;
+
+    while (index < (literal_len + distance_len)) {
+        unsigned short int code = get_next_bit(bit_stream, TRUE);
+        unsigned short int value = decode_hf(bit_stream, code, hf_lengths, codes, len, bit_length);
+
+        if (value < 16) {
+            if (index < literal_len) (*literal_lengths)[index] = value;
+            else (*distance_lengths)[index - literal_len] = value;
+            index++;
+        } else if (value == 16) {
+            if (!index) {
+                warning_print("shouldn't repeat elements with index 0\n");
+            }
+            unsigned char count = 3 + get_next_n_bits(bit_stream, 2, TRUE);
+            unsigned char value = (index < literal_len) ? (*literal_lengths)[index - 1] : (*distance_lengths)[index - literal_len - 1];
+            for (unsigned char i = 0; i < count; ++i, ++index) {
+                if (index < literal_len) (*literal_lengths)[index] = value;
+                else (*distance_lengths)[index - literal_len] = value;
+            }
+        } else if (value == 17) {
+            unsigned char count = 3 + get_next_n_bits(bit_stream, 3, TRUE);
+            for (unsigned char i = 0; i < count; ++i, ++index) {
+                if (index < literal_len) (*literal_lengths)[index] = 0;
+                else (*distance_lengths)[index - literal_len] = 0;
+            }
+        } else if (value == 18) {
+            unsigned char count = 11 + get_next_n_bits(bit_stream, 7, TRUE);
+            for (unsigned char i = 0; i < count; ++i, ++index) {
+                if (index < literal_len) (*literal_lengths)[index] = 0;
+                else (*distance_lengths)[index - literal_len] = 0;
+            }
+        } else {
+            warning_print("invalid value: %u\n", value);
+        }
+    }
+
+    return;
+}
 
 static void copy_data(unsigned char* sliding_window, unsigned short int* sliding_window_index, unsigned char** dest, unsigned int* index, unsigned short int length, unsigned short int distance) {
     *dest = (unsigned char*) realloc(*dest, sizeof(unsigned char) * ((*index) + length));
@@ -117,20 +167,6 @@ static void copy_data(unsigned char* sliding_window, unsigned short int* sliding
     }
     
     return;
-}
-
-static unsigned short int decode_hf_value(BitStream* bit_stream, unsigned short int code, unsigned short int* mins, unsigned short int* maxs, unsigned short int* val_ptr, unsigned char length, bool is_fixed) {
-    for (unsigned char i = 0; i < length; ++i) {
-        if (code <= maxs[i]) {
-            return (code - mins[i] + val_ptr[i]);
-        }
-
-        if ((!is_fixed) || (i != 1)) {
-            code = (code << 1) + get_next_bit(bit_stream, TRUE);
-        }
-    }
-    
-    return 0xFFFF;
 }
 
 static unsigned short int get_length(BitStream* bit_stream, unsigned short int value) {
@@ -278,14 +314,14 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
         // Select between the two huffman tables
         if (type == 2) {
             // Decode Dynamic Huffman Table
-            unsigned short int literals_lengths = (((bit_stream -> current_byte & 0xF8) >> 3) & 0x1F) + 257;
-            unsigned short int distance_lengths = get_next_n_bits(bit_stream, 5, FALSE) + 1;
-            unsigned short int lengths = get_next_n_bits(bit_stream, 4, FALSE) + 4;
-            debug_print(YELLOW, "literal_lengths: %u, distance_lengths: %u, lengths: %u\n", literals_lengths, distance_lengths, lengths);
+            unsigned short int literals_len = get_next_n_bits(bit_stream, 5, TRUE) + 257;
+            unsigned short int distance_len = get_next_n_bits(bit_stream, 5, TRUE) + 1;
+            unsigned short int lengths = get_next_n_bits(bit_stream, 4, TRUE) + 4;
+            debug_print(YELLOW, "literal_lengths: %u, distance_lengths: %u, lengths: %u\n", literals_len, distance_len, lengths);
 
             // Retrieve the length to build the huffman tree to decode the other two huffman trees (Literals and Distance)
             unsigned char order_of_code_lengths[] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
-            unsigned char code_lengths[19] = {}; //maximum alphabet symbol is 18
+            unsigned char* code_lengths = (unsigned char*) calloc(19, sizeof(unsigned char)); //maximum alphabet symbol is 18
 
             for (unsigned char i = 0; i < lengths; ++i) {
                 code_lengths[order_of_code_lengths[i]] = get_next_n_bits(bit_stream, 3, TRUE);
@@ -293,7 +329,25 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
 
             // Build the huffman tree from the distances
             unsigned char* hf_of_hftrees = generate_hf(code_lengths, 19);
+            unsigned char hf_bits_length = max_value(code_lengths, 19);
+            for (unsigned char i = 0; i < 19; ++i) {
+                debug_print(CYAN, "%u: code: %u, length: %u\n", i, hf_of_hftrees[i], code_lengths[i]);
+            }
 
+            unsigned char* literals_lengths = NULL;
+            unsigned char* distance_lengths = NULL;
+            decode_lengths(bit_stream, code_lengths, hf_of_hftrees, 19, hf_bits_length, literals_len, distance_len, &literals_lengths, &distance_lengths);
+            free(code_lengths);
+            free(hf_of_hftrees);
+
+            for (unsigned short int i = 0; i < literals_len; ++i) {
+                debug_print(YELLOW, "literals_hf[%u]: %u\n", i, literals_lengths[i]);
+            }            
+            
+            for (unsigned short int i = 0; i < distance_len; ++i) {
+                debug_print(YELLOW, "distance_hf[%u]: %u\n", i, distance_lengths[i]);
+            }
+            
             // val_ptr = dynamic_val_ptr;
             // mins = dynamic_mins;
             // maxs = dynamic_maxs;
