@@ -167,26 +167,12 @@ void decode_idat(PNGImage* image, Chunk idat_chunk) {
 
     // Check that there's no other IDAT chunks before this one
     set_byte(image -> bit_stream, idat_chunk.pos);
-
-    // Decode the compressed data
-    unsigned char zlib_compress_data = get_next_byte_uc(image -> bit_stream);
-    unsigned char zlib_flags = get_next_byte_uc(image -> bit_stream);
-
-    unsigned char compression_method = zlib_compress_data & 0x0F;
-    debug_print(YELLOW, "compression_method: %u\n", compression_method);
-    unsigned char window_size = (zlib_compress_data & 0xF0) >> 4;
-    debug_print(YELLOW, "window_size: %u\n", window_size);
-    unsigned char check_bits = zlib_flags & 0x1F;
-    debug_print(YELLOW, "check_bits: %u\n", check_bits);
-    unsigned char preset_dictionary = (zlib_flags & 0x20) >> 5;
-    debug_print(YELLOW, "preset_dictionary: %u\n", preset_dictionary);
-    unsigned char compression_level = (zlib_flags & 0xC0) >> 6;
-    debug_print(YELLOW, "compression_level: %u\n\n", compression_level);
-
     debug_print(BLUE, "init deflating...\n");
+
     unsigned char err = 0;
     unsigned int stream_length = 0;
     unsigned char* decompressed_stream = deflate(image -> bit_stream, &err, &stream_length);
+    
     if (err) {
         error_print((char*) decompressed_stream);
         (image -> image_data).error = DECODING_ERROR;

@@ -7,128 +7,113 @@
 #include "./debug_print.h"
 
 #define SLIDING_WINDOW_SIZE 0x8000
+#define SLIDING_WINDOW_MASK 0x7FF
 
 unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* decompressed_data_length);
 
-// unsigned char sh_get_maximum_bit_length(unsigned char *code_bit_lengths, unsigned int len_of_array) {
-//     unsigned char max_bit_length = 0;
-//     for(unsigned int i = 0; i < len_of_array; ++i) {
-//         if(max_bit_length < code_bit_lengths[i]) {
-//             max_bit_length = code_bit_lengths[i];
-//         }
-//     }
+static unsigned char max_value(unsigned char* vec, unsigned char len) {
+    unsigned char max = 0;
+    for (unsigned char i = 0; i < len; ++i) {
+        max = (max < vec[i]) ? vec[i] : max;
+    }
+    return max;
+}
 
-//     return max_bit_length;
-// }
+unsigned char* generate_counts(unsigned char* lengths, unsigned char len, unsigned char max_bit_length) {
+    unsigned char* bl_count = (unsigned char*) calloc(max_bit_length + 1, sizeof(unsigned char));
+    for (unsigned char i = 0; i < len; ++i) {
+        bl_count[lengths[i]]++;
+    }
+    return bl_count;
+}
 
-// void sh_first_code_for_bitlen(unsigned int *first_codes, unsigned int *code_count, unsigned int max_bit_length) {
-//     unsigned int code = 0;
-//     for(unsigned int i = 1; i <= max_bit_length; ++i) {
-//         code = ( code + code_count[i-1]) << 1; 
-
-//         if(code_count[i] > 0) {
-//             first_codes[i] = code;
-//         }
-//     }
-// }
-
-// void sh_assign_huffman_code(unsigned int *assigned_codes, unsigned int *first_codes, unsigned char *code_bit_lengths, unsigned int len_assign_code) {
-//     for(unsigned int i = 0; i < len_assign_code; ++i) {
-//         if(code_bit_lengths[i]) {
-//             assigned_codes[i] = first_codes[code_bit_lengths[i]]++;
-//         }
-//     }
-// }
-
-// void sh_get_bit_length_count(unsigned int *code_count, unsigned char *code_bit_length, unsigned int bit_len_array_len) {
-//     for(unsigned int i = 0; i < bit_len_array_len; ++i) {
-//         code_count[code_bit_length[i]]++;
-//     }
-// }
-
-// unsigned int* sh_build_huffman_code(unsigned char *code_bit_lengths, unsigned int len_code_bit_lengths) {
-//     unsigned int max_bit_length = sh_get_maximum_bit_length(code_bit_lengths, len_code_bit_lengths);
-
-//     unsigned int *code_counts = (unsigned int *) calloc(( max_bit_length + 1 ), sizeof(unsigned int));
-//     unsigned int *first_codes = (unsigned int *) calloc((max_bit_length + 1), sizeof(unsigned int));
-//     we have to assign code to every element in the alphabet, even if we have to assign zero
-//     unsigned int *assigned_codes = (unsigned int *) calloc((len_code_bit_lengths), sizeof(unsigned int));
-
-
-//     sh_get_bit_length_count(code_counts,  code_bit_lengths, len_code_bit_lengths);
-//     in the real world, when a code of the alphabet has zero bit length, it means it doesn't occur in the data thus we have to reset the count for the zero bit length codes to 0.
-//     code_counts[0] = 0; 
-
-//     sh_first_code_for_bitlen(first_codes, code_counts, max_bit_length);
-//     sh_assign_huffman_code(assigned_codes, first_codes, code_bit_lengths, len_code_bit_lengths);
-
-
-//     return assigned_codes;
-// }
-
-// void default_hf_lengths(unsigned char* bit_lengths) {
-//     for (unsigned char i = 0; i < 144; ++i) {
-//         bit_lengths[i] = 8;
-//     }
+unsigned char* generate_hf(unsigned char* lengths, unsigned char len) {
+    unsigned short int code = 0;
+    unsigned char max_bit_length = max_value(lengths, len);
+    unsigned char* bl_count = generate_counts(lengths, len, max_bit_length);
     
-//     for (unsigned short int i = 144; i < 256; ++i) {
-//         bit_lengths[i] = 9;
-//     }
+    bl_count[0] = 0;    
+    unsigned short int* next_code = (unsigned short int*) calloc(max_bit_length + 1, sizeof(unsigned short int));
+    for (unsigned char bits = 1; bits <= max_bit_length; ++bits) {
+        code = (code + bl_count[bits - 1]) << 1;
+        next_code[bits] = code;
+    }
+    free(bl_count);
     
-//     for (unsigned short int i = 256; i < 280; ++i) {
-//         bit_lengths[i] = 7;
-//     }
-    
-//     for (unsigned short int i = 280; i < 288; ++i) {
-//         bit_lengths[i] = 8;
-//     }
-    
-//     return;
-// }
+    unsigned char* codes = (unsigned char*) calloc(len, sizeof(unsigned char));
+    for (unsigned char i = 0; i < len; ++i) {
+        codes[i] = next_code[lengths[i]]++;
+    }
+    free(next_code);
 
-// void generate_hf_tables(unsigned int* hf_table[3], unsigned int* hf) {
-//     unsigned char sizes[] = {24, 152, 112};
-//     unsigned short int lengths[] = {0, 0, 0};
-//     for (unsigned char i = 0; i < 4; ++i) {
-//         hf_table[i] = (unsigned int*) calloc(sizes[i], sizeof(unsigned int));
-//     }
-    
-//     for (unsigned char i = 0; i < 144; ++i, ++lengths[1]) {
-//         hf_table[1][lengths[1]] = hf[i];
-//     }
-    
-//     for (unsigned short int i = 144; i < 256; ++i, ++lengths[2]) {
-//         hf_table[2][lengths[2]] = hf[i];
-//     }
-    
-//     for (unsigned short int i = 256; i < 280; ++i, ++lengths[0]) {
-//         hf_table[0][lengths[0]] = hf[i];
-//     }
-    
-//     for (unsigned short int i = 280; i < 288; ++i, ++lengths[1]) {
-//         hf_table[1][lengths[1]] = hf[i];
-//     }
-    
-//     return;
-// }
+    return codes;
+}
 
-static void copy_data(unsigned char* sliding_window, unsigned short int* sliding_window_index, unsigned char* dest, unsigned int* index, unsigned short int length, unsigned short int distance) {
-    dest = (unsigned char*) realloc(dest, sizeof(unsigned char) * (*index + length));
+unsigned char* decode_lengths(unsigned int* hf_tree) {
+    unsigned char* lengths;
+    return lengths;
+}
+
+// Procedure ReadLengths (LENGTHCOUNT, LENGTHS [])
+// Begin
+// INDEX = 0
+// While INDEX < LENGTHCOUNT DO
+// Begin
+// CODE = HuffmanDecodeInputStream ()
+// If CODE < 16 Then
+// Begin
+// LENGTHS [INDEX] = CODE
+// INDEX = INDEX + 1
+// End
+// Else If CODE = 16 Then
+// Begin
+// COUNT = 3 + ReadRawBitsFromInputStream (3)
+// For I = 1 To COUNT Do
+// Begin
+// LENGTHS [INDEX] = LENGTHS [INDEX - 1]
+// INDEX = INDEX + 1
+// End
+// End
+// Else If CODE = 17 Then
+// Begin
+// COUNT = 3 + ReadRawBitsFromInputStream (3)
+// For I = 1 To COUNT Do
+// Begin
+// LENGTHS [INDEX] = 0
+// INDEX = INDEX + 1
+// End
+// End
+// Else If CODE = 18 Then
+// Begin
+// COUNT = 11 + ReadRawBitsFromInputStream (7)
+// For I = 1 To COUNT Do
+// Begin
+// LENGTHS [INDEX] = 0
+// INDEX = INDEX + 1
+// End
+// End
+// End
+// End
+
+
+
+static void copy_data(unsigned char* sliding_window, unsigned short int* sliding_window_index, unsigned char** dest, unsigned int* index, unsigned short int length, unsigned short int distance) {
+    *dest = (unsigned char*) realloc(*dest, sizeof(unsigned char) * ((*index) + length));
     unsigned short int copy_pos = (SLIDING_WINDOW_SIZE + *sliding_window_index - distance);
-    copy_pos = copy_pos & (SLIDING_WINDOW_SIZE - 1);
+    copy_pos = copy_pos & (SLIDING_WINDOW_MASK);
 
     // Copy from the sliding window
     for (unsigned short int i = 0; i < length; ++i, ++(*index)) {
         sliding_window[*sliding_window_index] = sliding_window[copy_pos];
-        dest[*index] = (sliding_window[*sliding_window_index]);
+        (*dest)[*index] = (sliding_window[*sliding_window_index]);
 
         // Advance to the next output position
         *sliding_window_index = *sliding_window_index + 1;
-        *sliding_window_index = *sliding_window_index & (SLIDING_WINDOW_SIZE - 1);
+        *sliding_window_index = *sliding_window_index & (SLIDING_WINDOW_MASK);
 
         // Advance to the next byte to copy
         copy_pos = copy_pos + 1;
-        copy_pos = copy_pos & (SLIDING_WINDOW_SIZE - 1);
+        copy_pos = copy_pos & (SLIDING_WINDOW_MASK);
     }
     
     return;
@@ -140,7 +125,7 @@ static unsigned short int decode_hf_value(BitStream* bit_stream, unsigned short 
             return (code - mins[i] + val_ptr[i]);
         }
 
-        if ((i != 1) || (!is_fixed)) {
+        if ((!is_fixed) || (i != 1)) {
             code = (code << 1) + get_next_bit(bit_stream, TRUE);
         }
     }
@@ -179,19 +164,61 @@ static void update_adler_crc(unsigned char value, unsigned int* adler_register) 
 }
 
 unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* decompressed_data_length) {
-    unsigned int decompressed_stream_start = bit_stream -> byte;
     unsigned int adler_register = 1;
-    unsigned char sliding_window[SLIDING_WINDOW_SIZE];
-    unsigned short int sliding_window_size;
+    unsigned char* sliding_window = (unsigned char*) calloc(SLIDING_WINDOW_SIZE, sizeof(unsigned char));
+    unsigned short int sliding_window_size = 0;
 
     // Fixed huffman literal/lengths codes
     const unsigned short int fixed_val_ptr[] = {256, 0, 280, 144};
     const unsigned short int fixed_mins[] = {0x00, 0x30, 0xC0, 0x190};
-    const unsigned short int fixed_maxs[] = {0x17, 0xBF, 0xC7, 0x1FF};
+    const unsigned short int fixed_maxs[] = {0x17, 0xBF, 0xC7, 0x1FF};    
+    const unsigned short int fixed_distance_val_ptr[] = {0x00};
+    const unsigned short int fixed_distance_mins[] = {0x00};
+    const unsigned short int fixed_distance_maxs[] = {0x1F};
     
     // Initialize decompressed data
     unsigned char* decompressed_data = (unsigned char*) calloc(1, sizeof(unsigned char));
     *decompressed_data_length = 0;
+
+    // Decode the compressed data
+    unsigned char zlib_compress_data = get_next_byte_uc(bit_stream);
+    unsigned char zlib_flags = get_next_byte_uc(bit_stream);
+
+    unsigned char compression_method = zlib_compress_data & 0x0F;
+    debug_print(YELLOW, "compression_method: %u\n", compression_method);
+
+    if (compression_method != 8) {
+        *err = 1;
+        free(decompressed_data);
+        free(sliding_window);
+        return ((unsigned char*) "invalid compression method");
+    }
+
+    unsigned char window_size = (zlib_compress_data & 0xF0) >> 4;
+    debug_print(YELLOW, "window_size: %u\n", window_size);
+
+    if (window_size > 7) {
+        *err = 1;
+        free(decompressed_data);
+        free(sliding_window);
+        return ((unsigned char*) "invalid compression method");
+    }
+    
+    unsigned char check_bits = zlib_flags & 0x1F;
+    debug_print(YELLOW, "check_bits: %u\n", check_bits);
+    
+    unsigned char preset_dictionary = ((zlib_flags & 0x20) >> 5) & 0x01;
+    debug_print(YELLOW, "preset_dictionary: %u\n", preset_dictionary);
+
+    if (preset_dictionary) {
+        *err = 1;
+        free(decompressed_data);
+        free(sliding_window);
+        return ((unsigned char*) "invalid compression method");
+    }
+    
+    unsigned char compression_level = ((zlib_flags & 0xC0) >> 6) & 0x03;
+    debug_print(YELLOW, "compression_level: %u\n", compression_level);
 
     unsigned char final = 0;
     // --- debug purpose
@@ -217,6 +244,7 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
 
             if (check) {
                 *err = 1;
+                free(sliding_window);
                 free(decompressed_data);
                 return ((unsigned char*) "corrupted compressed block\n");
             }
@@ -233,6 +261,7 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
             continue;
         } else if (type == 3) {
             *err = 1;
+            free(sliding_window);
             free(decompressed_data);
             return ((unsigned char*) "invalid compression type\n");
         }
@@ -240,11 +269,31 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
         unsigned short int* val_ptr = NULL;
         unsigned short int* mins = NULL;
         unsigned short int* maxs = NULL;
-        unsigned char bits_length = 0;
+        unsigned char bits_length = 0;        
+        unsigned short int* distance_val_ptr = NULL;
+        unsigned short int* distance_mins = NULL;
+        unsigned short int* distance_maxs = NULL;
+        unsigned char distance_bits_length = 0;
 
         // Select between the two huffman tables
         if (type == 2) {
             // Decode Dynamic Huffman Table
+            unsigned short int literals_lengths = (((bit_stream -> current_byte & 0xF8) >> 3) & 0x1F) + 257;
+            unsigned short int distance_lengths = get_next_n_bits(bit_stream, 5, FALSE) + 1;
+            unsigned short int lengths = get_next_n_bits(bit_stream, 4, FALSE) + 4;
+            debug_print(YELLOW, "literal_lengths: %u, distance_lengths: %u, lengths: %u\n", literals_lengths, distance_lengths, lengths);
+
+            // Retrieve the length to build the huffman tree to decode the other two huffman trees (Literals and Distance)
+            unsigned char order_of_code_lengths[] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
+            unsigned char code_lengths[19] = {}; //maximum alphabet symbol is 18
+
+            for (unsigned char i = 0; i < lengths; ++i) {
+                code_lengths[order_of_code_lengths[i]] = get_next_n_bits(bit_stream, 3, TRUE);
+            }
+
+            // Build the huffman tree from the distances
+            unsigned char* hf_of_hftrees = generate_hf(code_lengths, 19);
+
             // val_ptr = dynamic_val_ptr;
             // mins = dynamic_mins;
             // maxs = dynamic_maxs;
@@ -253,7 +302,11 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
             val_ptr = (unsigned short int*) fixed_val_ptr;
             mins = (unsigned short int*) fixed_mins;
             maxs = (unsigned short int*) fixed_maxs;
-            bits_length = 4;
+            bits_length = 4;            
+            distance_val_ptr = (unsigned short int*) fixed_distance_val_ptr;
+            distance_mins = (unsigned short int*) fixed_distance_mins;
+            distance_maxs = (unsigned short int*) fixed_distance_maxs;
+            distance_bits_length = 1;
         }
 
         // Decode compressed data, remember to keep adding elements to the sliding window
@@ -262,9 +315,9 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
             code = get_next_n_bits(bit_stream, type == 1 ? 7 : 1, TRUE);
             unsigned short int decoded_value = decode_hf_value(bit_stream, code, mins, maxs, val_ptr, bits_length, type == 1);
             debug_print(YELLOW, "decoded_value: %u\n", decoded_value);
-            code = 0;
+            
             if (decoded_value < 256) {
-                decompressed_data = (unsigned char*) realloc(decompressed_data, sizeof(unsigned char) * (*decompressed_data_length + 1));
+                decompressed_data = (unsigned char*) realloc(decompressed_data, sizeof(unsigned char) * ((*decompressed_data_length) + 1));
                 decompressed_data[*decompressed_data_length] = decoded_value;
                 (*decompressed_data_length)++;
             } else if (decoded_value == 256) {
@@ -272,30 +325,25 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
                 break;
             } else {
                 unsigned short int length = get_length(bit_stream, decoded_value);
-                unsigned short int decoded_distance = get_next_n_bits(bit_stream, 5, TRUE); // Implement also dynamic hf decoding
+                unsigned short int distance_code = get_next_n_bits(bit_stream, type == 1 ? 5 : 1, TRUE);
+                unsigned short int decoded_distance = decode_hf_value(bit_stream, distance_code, distance_mins, distance_maxs, distance_val_ptr, distance_bits_length, type == 1);
                 unsigned short int distance = get_distance(bit_stream, decoded_distance);
-
-                debug_print(YELLOW, "length: %u, distance: %u\n", length, distance);
-                
-                copy_data(sliding_window, &sliding_window_size, decompressed_data, decompressed_data_length, length, distance);
+                copy_data(sliding_window, &sliding_window_size, &decompressed_data, decompressed_data_length, length, distance);
             }
         }
     }
-
-    unsigned int decompressed_stream_end = bit_stream -> byte;
 
     // Read the adler_crc
     unsigned int adler_crc = get_next_bytes_ui(bit_stream);
 
     // Calculate the crc of the blocks
-    set_byte(bit_stream, decompressed_stream_start);
-    for (unsigned int i = 0; i < (decompressed_stream_end - decompressed_stream_start); ++i) {
-        unsigned char byte = get_next_byte_uc(bit_stream);
-        update_adler_crc(byte, &adler_register);
+    for (unsigned int i = 0; i < *decompressed_data_length; ++i) {
+        update_adler_crc(decompressed_data[i], &adler_register);
     } 
 
     if (adler_crc != adler_register) {
         *err = 1;
+        free(sliding_window);
         free(decompressed_data);
         return ((unsigned char*) "corrupted compressed data blocks");
     }
