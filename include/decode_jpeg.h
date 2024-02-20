@@ -205,7 +205,7 @@ static void decode_dqt(JPEGImage* image, DataTables* data_tables) {
 
 static unsigned char max_val(unsigned char* vec, unsigned char len) {
     unsigned char max = 0;
-    for (unsigned char i = 0; i < len; ++len) {
+    for (unsigned char i = 0; i < len; ++i) {
         max = max < vec[i] ? vec[i] : max;
     }
     return max;
