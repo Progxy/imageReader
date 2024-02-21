@@ -128,6 +128,13 @@ typedef struct Chunks {
     unsigned char invalid_chunks;
 } Chunks;
 
+typedef struct DynamicHF {
+    unsigned short int* codes;
+    unsigned char* lengths;
+    unsigned short int size;
+    unsigned char bit_length;
+} DynamicHF; 
+
 typedef struct PNGImage {
     Image image_data;
     BitStream* bit_stream;
