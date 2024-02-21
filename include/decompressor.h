@@ -32,9 +32,9 @@ static void deallocate_dynamic_hf(DynamicHF* hf) {
     return;
 }
 
-static unsigned char max_value(unsigned char* vec, unsigned char len) {
+static unsigned char max_value(unsigned char* vec, unsigned short int len) {
     unsigned char max = 0;
-    for (unsigned char i = 0; i < len; ++i) {
+    for (unsigned short int i = 0; i < len; ++i) {
         max = (max < vec[i]) ? vec[i] : max;
     }
     return max;
@@ -68,6 +68,10 @@ static void generate_codes(DynamicHF* hf) {
 }
 
 static unsigned short int decode_hf_fixed(BitStream* bit_stream, unsigned short int code, const unsigned short int* mins, const unsigned short int* maxs, const unsigned short int* val_ptr, unsigned char bit_length) {
+    for (unsigned char i = 0; i < (bit_length == 4 ? 6 : 4); ++i) {
+        code = (code << 1) + get_next_bit(bit_stream, TRUE);
+    }
+
     for (unsigned char i = 0; i < bit_length; ++i) {
         if (code <= maxs[i]) {
             return (code - mins[i] + val_ptr[i]);
@@ -92,7 +96,7 @@ static unsigned short int decode_hf(BitStream* bit_stream, unsigned short int co
     }
     
     debug_print(RED, "\n");
-    debug_print(RED, "probably invalid huffman tree: \n");
+    debug_print(RED, "probably invalid huffman tree, bit_length: %u, size: %u: \n", hf.bit_length, hf.size);
     for (unsigned short int i = 0; i < hf.size; ++i) {
         debug_print(CYAN, "%u: length: %u, code: %u -", i, (hf.lengths)[i], (hf.codes)[i]);
         print_bits(CYAN, (hf.codes)[i], (hf.lengths)[i] ? (hf.lengths)[i] : 1);
@@ -269,6 +273,8 @@ static void decode_dynamic_huffman_tables(BitStream* bit_stream, DynamicHF* lite
 
     generate_codes(literals_hf);
     generate_codes(distance_hf);
+
+    debug_print(BLUE, "bit_length: %u, size: %u\n", literals_hf -> bit_length, literals_hf -> size);
     return;
 }
 
@@ -289,7 +295,7 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
 
     unsigned char counter = 0;
     unsigned char final = 0;
-    while (!final && counter < 2) {
+    while (!final) {
         final = get_next_bit(bit_stream, TRUE);
         unsigned char type = get_next_n_bits(bit_stream, 2, TRUE);
         debug_print(YELLOW, "\n");
@@ -317,6 +323,7 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
         // Select between the two huffman tables
         if (type == 2) {
             decode_dynamic_huffman_tables(bit_stream, &literals_hf, &distance_hf);
+            debug_print(BLUE, "check bit_length: %u, size: %u\n", literals_hf.bit_length, literals_hf.size);
         } else {
             literals_hf.bit_length = 4;            
             distance_hf.bit_length = 1;
@@ -325,7 +332,7 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
         // Decode compressed data, remember to keep adding elements to the sliding window
         unsigned short int code = 0;
         while (TRUE) {
-            code = get_next_n_bits(bit_stream, (type == 1) ? 7 : 1, TRUE);
+            code = get_next_n_bits(bit_stream, 1, TRUE);
             unsigned short int decoded_value = 0;
             if (type == 1) decoded_value = decode_hf_fixed(bit_stream, code, fixed_mins, fixed_maxs, fixed_val_ptr, literals_hf.bit_length);
             else decoded_value = decode_hf(bit_stream, code, literals_hf);
@@ -335,7 +342,6 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
                 free(decompressed_data);
                 return ((unsigned char*) "invalid decoded value\n");
             }
-            //debug_print(YELLOW, "decoded_value: %u\n", decoded_value);
             
             if (decoded_value < 256) {
                 decompressed_data = (unsigned char*) realloc(decompressed_data, sizeof(unsigned char) * ((*decompressed_data_length) + 1));
@@ -346,7 +352,7 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
                 break;
             } else {
                 unsigned short int length = get_length(bit_stream, decoded_value);
-                unsigned short int distance_code = get_next_n_bits(bit_stream, (type == 1) ? 5 : 1, TRUE);
+                unsigned short int distance_code = get_next_n_bits(bit_stream, 1, TRUE);
                 unsigned short int decoded_distance = 0;
                 if (type == 1) decoded_distance = decode_hf_fixed(bit_stream, distance_code, fixed_distance_mins, fixed_distance_maxs, fixed_distance_val_ptr, distance_hf.bit_length);
                 else decoded_distance = decode_hf(bit_stream, distance_code, distance_hf);
@@ -367,12 +373,14 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
         }
     }
 
+    debug_print(WHITE, "decompressed data len: %u\n", *decompressed_data_length);
+
     // Read the adler_crc
     unsigned int adler_crc = get_next_bytes_ui(bit_stream);
     unsigned int adler_register = 1;
 
     // Calculate the crc of the blocks
-    for (unsigned int i = 0; i < *decompressed_data_length; ++i) {
+    for (unsigned int i = 0; i < (*decompressed_data_length); ++i) {
         update_adler_crc(decompressed_data[i], &adler_register);
     } 
 
