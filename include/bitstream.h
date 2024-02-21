@@ -114,8 +114,8 @@ unsigned char get_next_n_bits(BitStream* bit_stream, unsigned char n_bits, unsig
     unsigned char bits = 0;
     
     for (unsigned char i = 0; i < n_bits; ++i) {
-        bits <<= 1;
-        bits += get_next_bit(bit_stream, reverse_flag);
+        if (reverse_flag) bits += get_next_bit(bit_stream, reverse_flag) << i;
+        else bits = (bits << 1) + get_next_bit(bit_stream, reverse_flag);
     }
     
     return bits;
