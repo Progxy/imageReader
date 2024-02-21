@@ -53,6 +53,78 @@ static bool is_valid_depth_color_combination(unsigned char bit_depth, PNGType co
     return FALSE;
 }
 
+static void assign_components_count(PNGImage* image) {
+    switch (image -> color_type) {
+            case GREYSCALE: {
+                (image -> image_data).components = 3;
+                break;
+            }
+
+            case TRUECOLOR: {
+                (image -> image_data).components = 3;
+                break;
+            }
+
+            case INDEXED_COLOR: {
+                (image -> image_data).components = 3;
+                break;
+            }
+
+            case GREYSCALE_ALPHA: {
+                (image -> image_data).components = 4;
+                break;
+            }
+
+            case TRUECOLOR_ALPHA: {
+                (image -> image_data).components = 4;
+                break;
+            }
+        }
+    return;
+}
+
+static void convert_to_RGB(PNGImage* image) {
+    unsigned char components = (image -> image_data).components;
+    unsigned char* decoded_data = (image -> image_data).decoded_data;
+    unsigned int size = (image -> image_data).size;
+    unsigned char bit_depth = image -> bit_depth;
+    unsigned int width = (image -> image_data).width;
+    unsigned int height = (image -> image_data).height;
+    BitStream* bit_stream = allocate_bit_stream(decoded_data, size);
+    unsigned int new_size = width * height;
+
+    RGBA rgba = (RGBA) {};
+    rgba.R = (unsigned char*) calloc(new_size, sizeof(unsigned char));
+    rgba.G = (unsigned char*) calloc(new_size, sizeof(unsigned char));
+    rgba.B = (unsigned char*) calloc(new_size, sizeof(unsigned char));
+    if (components == 4) rgba.A = (unsigned char*) calloc(new_size, sizeof(unsigned char));
+
+    for (unsigned int i = 0, index = 0; i < ((new_size * bit_depth) / 8); ++i, ++index) {
+        rgba.R[index] = get_next_n_bits(bit_stream, bit_depth, FALSE);
+        rgba.G[index] = get_next_n_bits(bit_stream, bit_depth, FALSE);
+        rgba.B[index] = get_next_n_bits(bit_stream, bit_depth, FALSE);
+        if (components == 4) rgba.A[index] = get_next_n_bits(bit_stream, bit_depth, FALSE);
+    }
+
+    deallocate_bit_stream(bit_stream);
+    (image -> image_data).decoded_data = (unsigned char*) calloc(width * height * components, sizeof(unsigned char));
+    (image -> image_data).size = 0;
+    
+    for (unsigned int i = 0, index = 0; i < (width * height * components); i += components, ++index, ((image -> image_data).size) += components) {
+        ((image -> image_data).decoded_data)[i] = rgba.R[index];
+        ((image -> image_data).decoded_data)[i + 1] = rgba.G[index];
+        ((image -> image_data).decoded_data)[i + 2] = rgba.B[index];
+        if (components == 4) ((image -> image_data).decoded_data)[i + 3] = rgba.A[index];
+    }
+
+    free(rgba.R);
+    free(rgba.G);
+    free(rgba.B);
+    if (components == 4) free(rgba.A);
+
+    return;
+}
+
 void decode_ihdr(PNGImage* image, Chunk ihdr_chunk) {
     if (ihdr_chunk.length != 13) {
         error_print("invalid length of the IHDR chunk: %u while should be 13\n", ihdr_chunk.length);
@@ -83,6 +155,8 @@ void decode_ihdr(PNGImage* image, Chunk ihdr_chunk) {
         (image -> image_data).error = INVALID_DEPTH_COLOR_COMBINATION;
         return;
     }
+
+    assign_components_count(image);
 
     debug_print(YELLOW, "bit_depth: %u\n", image -> bit_depth);
     debug_print(YELLOW, "color_type: %s\n", png_types[image -> color_type]);
@@ -171,7 +245,7 @@ void decode_idat(PNGImage* image, Chunk idat_chunk) {
 
     unsigned char err = 0;
     unsigned int stream_length = 0;
-    unsigned char* decompressed_stream = deflate(image -> bit_stream, &err, &stream_length);
+    unsigned char* decompressed_stream = deflate(image -> bit_stream, &err, &stream_length, TRUE);
     
     if (err) {
         error_print((char*) decompressed_stream);
@@ -179,6 +253,22 @@ void decode_idat(PNGImage* image, Chunk idat_chunk) {
         return;
     }
 
+    if (image -> interlace_method) {
+        error_print("implement the interlacing Adam 7 method...\n");
+        (image -> image_data).error = DECODING_ERROR;
+        return;
+    }
+
+    if (image -> filter_method) {
+        error_print("implement the interlacing Adam 7 method...\n");
+        (image -> image_data).error = DECODING_ERROR;
+        return;
+    }
+
+    //TODO: If the data is part of more idat you should add the data and not assign it
+    (image -> image_data).decoded_data = decompressed_stream;
+    (image -> image_data).size += stream_length;
+    debug_print(WHITE, "decompressed data len: %u\n\n", (image -> image_data).size);
     debug_print(YELLOW, "\n");
 
     return;
@@ -201,7 +291,7 @@ Image decode_png(FileData* image_file) {
     Chunks chunks = find_and_check_chunks(image_file -> data, image_file -> length);
     PNGImage* image = (PNGImage*) calloc(1, sizeof(PNGImage));
     image -> bit_stream = allocate_bit_stream(image_file -> data, image_file -> length);
-    image -> palette = (RGB) { .R = NULL, .G = NULL, .B = NULL };
+    image -> palette = (RGBA) { .R = NULL, .G = NULL, .B = NULL, .A = NULL };
 
     debug_print(BLUE, "image_size: %u\n\n", image_file -> length);
 
@@ -226,10 +316,13 @@ Image decode_png(FileData* image_file) {
 
     debug_print(YELLOW, "\n");
 
+    if ((image -> color_type == TRUECOLOR) || (image -> color_type == TRUECOLOR_ALPHA)) {
+        convert_to_RGB(image);
+    }
+
     // Deallocate stuff
     deallocate_bit_stream(image -> bit_stream);
 
-    (image -> image_data).error = DECODING_ERROR;
     return image -> image_data;
 }
 

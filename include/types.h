@@ -88,12 +88,14 @@ typedef struct MarkersTable {
     unsigned int count;
 } MarkersTable;
 
-typedef struct RGB {
+typedef struct RGBA {
     unsigned char* R;
     unsigned char* G;
     unsigned char* B;
-} RGB;
+    unsigned char* A;
+} RGBA;
 
+typedef RGBA RGB;
 typedef struct Image {
     unsigned int width;
     unsigned int height;

@@ -19,7 +19,7 @@ const unsigned short int fixed_distance_maxs[] = {0x1F};
 
 /* ---------------------------------------------------------------------------------------------------------- */
 
-unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* decompressed_data_length);
+unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* decompressed_data_length, unsigned char ignore_adler_crc);
 
 /* ---------------------------------------------------------------------------------------------------------- */
 
@@ -278,7 +278,7 @@ static void decode_dynamic_huffman_tables(BitStream* bit_stream, DynamicHF* lite
     return;
 }
 
-unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* decompressed_data_length) {    
+unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* decompressed_data_length, unsigned char ignore_adler_crc) {    
     // Initialize decompressed data
     unsigned char* sliding_window = (unsigned char*) calloc(SLIDING_WINDOW_SIZE, sizeof(unsigned char));
     unsigned short int sliding_window_size = 0;
@@ -373,8 +373,6 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
         }
     }
 
-    debug_print(WHITE, "decompressed data len: %u\n", *decompressed_data_length);
-
     // Read the adler_crc
     unsigned int adler_crc = get_next_bytes_ui(bit_stream);
     unsigned int adler_register = 1;
@@ -384,10 +382,11 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
         update_adler_crc(decompressed_data[i], &adler_register);
     } 
 
-    if (adler_crc != adler_register) {
+    if ((adler_crc != adler_register) && (!ignore_adler_crc)) {
         *err = 1;
         free(sliding_window);
         free(decompressed_data);
+        debug_print(RED, "adler_register: 0x%x, adler_crc: 0x%x\n", adler_register, adler_crc);
         return ((unsigned char*) "corrupted compressed data blocks");
     }
 

@@ -14,9 +14,9 @@ static gboolean on_draw_event(GtkWidget *widget, cairo_t *cr, gpointer user_data
         
     for (unsigned int i = 0; i < image -> height; ++i) {
         for (unsigned int j = 0; j < image -> width; ++j) {
-            unsigned int pos = i * image -> width * 3 + j * 3;
+            unsigned int pos = i * image -> width * (image -> components) + j * (image -> components);
             // Set the color (RGBA) for the pixel
-            cairo_set_source_rgba(cr, (image -> decoded_data)[pos] / 255.0, (image -> decoded_data)[pos + 1] / 255.0, (image -> decoded_data)[pos + 2] / 255.0, 1.0);
+            cairo_set_source_rgba(cr, (image -> decoded_data)[pos] / 255.0, (image -> decoded_data)[pos + 1] / 255.0, (image -> decoded_data)[pos + 2] / 255.0, image -> components == 4 ? (image -> decoded_data)[pos + 3] / 255.0 : 1.0);
             // Draw a filled rectangle (pixel) at position (x, y) with a width and height of 1
             cairo_rectangle(cr, j + offset_x, i + offset_y, 1.0, 1.0);
             cairo_fill(cr);
