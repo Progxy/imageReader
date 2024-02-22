@@ -298,7 +298,7 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
         return (unsigned char*) error;
     }
 
-    unsigned char counter = 0;
+    unsigned short int counter = 0;
     unsigned char final = 0;
     while (!final) {
         final = get_next_bit(bit_stream, TRUE);
