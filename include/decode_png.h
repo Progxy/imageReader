@@ -119,7 +119,6 @@ static void convert_to_RGB(PNGImage* image) {
         ((image -> image_data).decoded_data)[i] = rgba.R[index];
         ((image -> image_data).decoded_data)[i + 1] = rgba.G[index];
         ((image -> image_data).decoded_data)[i + 2] = rgba.B[index];
-        debug_print(WHITE, "rgb(%u, %u, %u)\n", rgba.R[index], rgba.G[index], rgba.B[index]);
         if (components == 4) ((image -> image_data).decoded_data)[i + 3] = rgba.A[index];
     }
 
@@ -137,6 +136,19 @@ static void copy_decompressed_data(PNGImage* image, unsigned char* decompressed_
         (image -> image_data).decoded_data[index] = decompressed_data[i];
     }
     free(decompressed_data);
+    return;
+}
+
+static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned int decompressed_data_size) {
+    for (unsigned int i = 0, row = 0; i < decompressed_data_size; ++i) {
+        unsigned char filter_type = decompressed_data[i];
+        if (filter_type) {
+            debug_print(WHITE, "%u row filter: %u, %u\n", row, filter_type, filter_type & 7);
+            i += (image -> image_data).width * (image -> image_data).components;
+            row++;
+        }
+        filter_type = MIN(filter_type, 4);
+    }
     return;
 }
 
@@ -275,11 +287,7 @@ void decode_idat(PNGImage* image, Chunk idat_chunk) {
         return;
     }
 
-    if (image -> filter_method) {
-        error_print("implement the interlacing Adam 7 method...\n");
-        (image -> image_data).error = DECODING_ERROR;
-        return;
-    }
+    defilter(image, decompressed_stream, stream_length);
 
     copy_decompressed_data(image, decompressed_stream, stream_length);
     debug_print(WHITE, "decompressed data len: %u\n\n", (image -> image_data).size);
