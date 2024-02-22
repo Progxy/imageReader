@@ -53,7 +53,7 @@ static bool is_valid_depth_color_combination(unsigned char bit_depth, PNGType co
 
     debug_print(YELLOW, "color_type: %s, start: %u\n", png_types[color_type], index);
     
-    CHECK_VALID_BIT_DEPTH(bit_depth, color_types_starts[index], color_types_lengths[i]);
+    CHECK_VALID_BIT_DEPTH(bit_depth, color_types_starts[index], color_types_lengths[index]);
     
     return FALSE;
 }

@@ -17,6 +17,12 @@ const unsigned short int fixed_distance_val_ptr[] = {0x00};
 const unsigned short int fixed_distance_mins[] = {0x00};
 const unsigned short int fixed_distance_maxs[] = {0x1F};
 
+typedef struct SlidingWindow {
+    unsigned char* window;
+    unsigned short int out_pos;
+    unsigned short int cur_pos;
+} SlidingWindow;
+
 /* ---------------------------------------------------------------------------------------------------------- */
 
 unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* decompressed_data_length, unsigned char ignore_adler_crc);
@@ -149,23 +155,22 @@ static void decode_lengths(BitStream* bit_stream, DynamicHF decoder_hf, DynamicH
     return;
 }
 
-static void copy_data(unsigned char* sliding_window, unsigned short int* sliding_window_index, unsigned char** dest, unsigned int* index, unsigned short int length, unsigned short int distance) {
+static void copy_data(SlidingWindow* sliding_window, unsigned char** dest, unsigned int* index, unsigned short int length, unsigned short int distance) {
     *dest = (unsigned char*) realloc(*dest, sizeof(unsigned char) * ((*index) + length));
-    unsigned short int copy_pos = (SLIDING_WINDOW_SIZE + *sliding_window_index - distance);
-    copy_pos = copy_pos & (SLIDING_WINDOW_MASK);
+    sliding_window -> cur_pos = (SLIDING_WINDOW_SIZE + (sliding_window -> out_pos) - distance);
+    sliding_window -> cur_pos = (sliding_window -> cur_pos) & (SLIDING_WINDOW_MASK);
 
     // Copy from the sliding window
     for (unsigned short int i = 0; i < length; ++i, ++(*index)) {
-        sliding_window[*sliding_window_index] = sliding_window[copy_pos];
-        (*dest)[*index] = (sliding_window[*sliding_window_index]);
+        (sliding_window -> window)[sliding_window -> out_pos] = (sliding_window -> window)[sliding_window -> cur_pos];
+        (*dest)[*index] = ((sliding_window -> window)[sliding_window -> cur_pos]);
+        //debug_print(WHITE, "cur_pos: %u, out_pos: %u, data: %u\n", sliding_window -> cur_pos, sliding_window -> out_pos, (*dest)[*index]);
 
         // Advance to the next output position
-        *sliding_window_index = *sliding_window_index + 1;
-        *sliding_window_index = *sliding_window_index & (SLIDING_WINDOW_MASK);
+        sliding_window -> out_pos = ((sliding_window -> out_pos) + 1) & (SLIDING_WINDOW_MASK);
 
         // Advance to the next byte to copy
-        copy_pos = copy_pos + 1;
-        copy_pos = copy_pos & (SLIDING_WINDOW_MASK);
+        sliding_window -> cur_pos = ((sliding_window -> cur_pos) + 1) & (SLIDING_WINDOW_MASK);
     }
     
     return;
@@ -186,7 +191,7 @@ static unsigned short int get_distance(BitStream* bit_stream, unsigned short int
     const unsigned char extra_bits[] = {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13}; 
     
     unsigned short int distance = base_values[value];
-    unsigned char extra = get_next_n_bits(bit_stream, extra_bits[value], TRUE);
+    unsigned short int extra = get_next_n_bits(bit_stream, extra_bits[value], TRUE);
 
     return (distance + extra);
 }
@@ -280,8 +285,8 @@ static void decode_dynamic_huffman_tables(BitStream* bit_stream, DynamicHF* lite
 
 unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* decompressed_data_length, unsigned char ignore_adler_crc) {    
     // Initialize decompressed data
-    unsigned char* sliding_window = (unsigned char*) calloc(SLIDING_WINDOW_SIZE, sizeof(unsigned char));
-    unsigned short int sliding_window_size = 0;
+    SlidingWindow sliding_window = (SlidingWindow) {.cur_pos = 0, .out_pos = 0};
+    sliding_window.window = (unsigned char*) calloc(SLIDING_WINDOW_SIZE, sizeof(unsigned char));
     unsigned char* decompressed_data = (unsigned char*) calloc(1, sizeof(unsigned char));
     *decompressed_data_length = 0;
 
@@ -289,7 +294,7 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
     if (error != NULL) {
         *err = 1;
         free(decompressed_data);
-        free(sliding_window);
+        free(sliding_window.window);
         return (unsigned char*) error;
     }
 
@@ -305,14 +310,14 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
 
         if (type == 0) {
             if ((*err = read_uncompressed_data(bit_stream, &decompressed_data, decompressed_data_length))) {
-                free(sliding_window);
+                free(sliding_window.window);
                 free(decompressed_data);
                 return ((unsigned char*) "corrupted compressed block\n");
             }
             continue;
         } else if (type == 3) {
             *err = 1;
-            free(sliding_window);
+            free(sliding_window.window);
             free(decompressed_data);
             return ((unsigned char*) "invalid compression type\n");
         }
@@ -338,7 +343,7 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
             else decoded_value = decode_hf(bit_stream, code, literals_hf);
             if (decoded_value == 0xFFFF) {
                 *err = 1;
-                free(sliding_window);
+                free(sliding_window.window);
                 free(decompressed_data);
                 return ((unsigned char*) "invalid decoded value\n");
             }
@@ -347,6 +352,8 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
                 decompressed_data = (unsigned char*) realloc(decompressed_data, sizeof(unsigned char) * ((*decompressed_data_length) + 1));
                 decompressed_data[*decompressed_data_length] = decoded_value;
                 (*decompressed_data_length)++;
+                sliding_window.window[sliding_window.out_pos] = decoded_value;
+                sliding_window.out_pos = (sliding_window.out_pos + 1) & SLIDING_WINDOW_MASK;
             } else if (decoded_value == 256) {
                 debug_print(WHITE, "END OF COMPRESSED BLOCK\n");
                 break;
@@ -358,12 +365,12 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
                 else decoded_distance = decode_hf(bit_stream, distance_code, distance_hf);
                 if (decoded_distance == 0xFFFF) {
                     *err = 1;
-                    free(sliding_window);
+                    free(sliding_window.window);
                     free(decompressed_data);
                     return ((unsigned char*) "invalid decoded distance\n");
                 }
                 unsigned short int distance = get_distance(bit_stream, decoded_distance);
-                copy_data(sliding_window, &sliding_window_size, &decompressed_data, decompressed_data_length, length, distance);
+                copy_data(&sliding_window, &decompressed_data, decompressed_data_length, length, distance);
             }
         }
 
@@ -382,9 +389,10 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
         update_adler_crc(decompressed_data[i], &adler_register);
     } 
 
+    free(sliding_window.window);
+
     if ((adler_crc != adler_register) && (!ignore_adler_crc)) {
         *err = 1;
-        free(sliding_window);
         free(decompressed_data);
         debug_print(RED, "adler_register: 0x%x, adler_crc: 0x%x\n", adler_register, adler_crc);
         return ((unsigned char*) "corrupted compressed data blocks");
