@@ -24,7 +24,7 @@ typedef struct SlidingWindow {
 
 /* ---------------------------------------------------------------------------------------------------------- */
 
-unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* decompressed_data_length, unsigned char ignore_adler_crc);
+unsigned char* inflate(BitStream* bit_stream, unsigned char* err, unsigned int* decompressed_data_length, unsigned char ignore_adler_crc);
 
 /* ---------------------------------------------------------------------------------------------------------- */
 
@@ -156,7 +156,7 @@ static void decode_lengths(BitStream* bit_stream, DynamicHF decoder_hf, DynamicH
 
 static void copy_data(SlidingWindow* sliding_window, unsigned char** dest, unsigned int* index, unsigned short int length, unsigned short int distance) {
     *dest = (unsigned char*) realloc(*dest, sizeof(unsigned char) * ((*index) + length));
-    unsigned short int cur_pos = (SLIDING_WINDOW_SIZE + (sliding_window -> out_pos) - distance);
+    unsigned int cur_pos = (SLIDING_WINDOW_SIZE + (sliding_window -> out_pos) - distance);
     cur_pos = (cur_pos) & (SLIDING_WINDOW_MASK);
 
     // Copy from the sliding window
@@ -255,7 +255,7 @@ static void decode_dynamic_huffman_tables(BitStream* bit_stream, DynamicHF* lite
     debug_print(YELLOW, "literal_lengths: %u, distance_lengths: %u, lengths: %u\n", literals_hf -> size, distance_hf -> size, decoder_hf.size);
 
     // Retrieve the length to build the huffman tree to decode the other two huffman trees (Literals and Distance)
-    unsigned char order_of_code_lengths[] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
+    const unsigned char order_of_code_lengths[] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
     decoder_hf.lengths = (unsigned char*) calloc(19, sizeof(unsigned char)); 
 
     for (unsigned char i = 0; i < decoder_hf.size; ++i) {
@@ -277,7 +277,7 @@ static void decode_dynamic_huffman_tables(BitStream* bit_stream, DynamicHF* lite
     return;
 }
 
-unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* decompressed_data_length, unsigned char ignore_adler_crc) {    
+unsigned char* inflate(BitStream* bit_stream, unsigned char* err, unsigned int* decompressed_data_length, unsigned char ignore_adler_crc) {    
     // Initialize decompressed data
     SlidingWindow sliding_window = (SlidingWindow) {.out_pos = 0};
     sliding_window.window = (unsigned char*) calloc(SLIDING_WINDOW_SIZE, sizeof(unsigned char));
