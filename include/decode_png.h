@@ -19,7 +19,7 @@
                                     index = i;                              \
 
 const unsigned char valid_bit_depths[] = {1, 2, 4, 8, 16};
-const PNGType valid_color_types[] = {GREYSCALE, TRUECOLOR, INDEXED_COLOR, GREYSCALE_ALPHA, TRUECOLOR_ALPHA};
+const PNGType valid_color_types[] = {GREYSCALE, 0, TRUECOLOR, INDEXED_COLOR, GREYSCALE_ALPHA, 0, TRUECOLOR_ALPHA};
 const unsigned char color_types_starts[] = {0, 0, 3, 0, 3, 0, 3};
 const unsigned char color_types_lengths[] = {5, 0, 2, 4, 2, 0, 2};
 
@@ -260,6 +260,7 @@ void decode_idat(PNGImage* image, Chunk idat_chunk) {
     unsigned char err = 0;
     unsigned int stream_length = 0;
     unsigned char* decompressed_stream = deflate(image -> bit_stream, &err, &stream_length, TRUE);
+    debug_print(YELLOW, "read: %u, length: %u\n", (image -> bit_stream) -> byte, idat_chunk.length + idat_chunk.pos);
     
     if (err) {
         error_print((char*) decompressed_stream);
