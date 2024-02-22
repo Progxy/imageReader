@@ -20,12 +20,15 @@
 
 const unsigned char valid_bit_depths[] = {1, 2, 4, 8, 16};
 const PNGType valid_color_types[] = {GREYSCALE, TRUECOLOR, INDEXED_COLOR, GREYSCALE_ALPHA, TRUECOLOR_ALPHA};
-const unsigned char color_types_starts[] = {0, 3, 0, 3, 3};
-const unsigned char color_types_lengths[] = {5, 2, 4, 2, 2};
+const unsigned char color_types_starts[] = {0, 0, 3, 0, 3, 0, 3};
+const unsigned char color_types_lengths[] = {5, 0, 2, 4, 2, 0, 2};
 
 /* -------------------------------------------------------------------------------------- */
 
 static bool is_str_equal(unsigned char* str_a, unsigned char* str_b, unsigned int len);
+static bool is_valid_depth_color_combination(unsigned char bit_depth, PNGType color_type);
+static void assign_components_count(PNGImage* image);
+static void convert_to_RGB(PNGImage* image);
 void decode_ihdr(PNGImage* image, Chunk ihdr_chunk);
 Image decode_png(FileData* image_file);
 
@@ -47,6 +50,8 @@ static bool is_valid_depth_color_combination(unsigned char bit_depth, PNGType co
     if (index == 0xFF) {
         return FALSE;
     }
+
+    debug_print(YELLOW, "color_type: %s, start: %u\n", png_types[color_type], index);
     
     CHECK_VALID_BIT_DEPTH(bit_depth, color_types_starts[index], color_types_lengths[i]);
     
@@ -122,6 +127,15 @@ static void convert_to_RGB(PNGImage* image) {
     free(rgba.B);
     if (components == 4) free(rgba.A);
 
+    return;
+}
+
+static void copy_decompressed_data(PNGImage* image, unsigned char* decompressed_data, unsigned int decompressed_data_len) {
+    (image -> image_data).decoded_data = (unsigned char*) realloc((image -> image_data).decoded_data, sizeof(unsigned char) * ((image -> image_data).size + decompressed_data_len));
+    for (unsigned int i = 0, index = 0; i < decompressed_data_len; ++i, ++index, ++(image -> image_data).size) {
+        (image -> image_data).decoded_data[index] = decompressed_data[i];
+    }
+    free(decompressed_data);
     return;
 }
 
@@ -265,9 +279,7 @@ void decode_idat(PNGImage* image, Chunk idat_chunk) {
         return;
     }
 
-    //TODO: If the data is part of more idat you should add the data and not assign it
-    (image -> image_data).decoded_data = decompressed_stream;
-    (image -> image_data).size += stream_length;
+    copy_decompressed_data(image, decompressed_stream, stream_length);
     debug_print(WHITE, "decompressed data len: %u\n\n", (image -> image_data).size);
     debug_print(YELLOW, "\n");
 
@@ -292,6 +304,8 @@ Image decode_png(FileData* image_file) {
     PNGImage* image = (PNGImage*) calloc(1, sizeof(PNGImage));
     image -> bit_stream = allocate_bit_stream(image_file -> data, image_file -> length);
     image -> palette = (RGBA) { .R = NULL, .G = NULL, .B = NULL, .A = NULL };
+    (image -> image_data).decoded_data = (unsigned char*) calloc(1, sizeof(unsigned char));
+    (image -> image_data).size = 0;
 
     debug_print(BLUE, "image_size: %u\n\n", image_file -> length);
 
