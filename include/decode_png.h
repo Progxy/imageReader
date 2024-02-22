@@ -119,6 +119,7 @@ static void convert_to_RGB(PNGImage* image) {
         ((image -> image_data).decoded_data)[i] = rgba.R[index];
         ((image -> image_data).decoded_data)[i + 1] = rgba.G[index];
         ((image -> image_data).decoded_data)[i + 2] = rgba.B[index];
+        debug_print(WHITE, "rgb(%u, %u, %u)\n", rgba.R[index], rgba.G[index], rgba.B[index]);
         if (components == 4) ((image -> image_data).decoded_data)[i + 3] = rgba.A[index];
     }
 

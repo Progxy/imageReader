@@ -20,7 +20,6 @@ const unsigned short int fixed_distance_maxs[] = {0x1F};
 typedef struct SlidingWindow {
     unsigned char* window;
     unsigned short int out_pos;
-    unsigned short int cur_pos;
 } SlidingWindow;
 
 /* ---------------------------------------------------------------------------------------------------------- */
@@ -157,20 +156,15 @@ static void decode_lengths(BitStream* bit_stream, DynamicHF decoder_hf, DynamicH
 
 static void copy_data(SlidingWindow* sliding_window, unsigned char** dest, unsigned int* index, unsigned short int length, unsigned short int distance) {
     *dest = (unsigned char*) realloc(*dest, sizeof(unsigned char) * ((*index) + length));
-    sliding_window -> cur_pos = (SLIDING_WINDOW_SIZE + (sliding_window -> out_pos) - distance);
-    sliding_window -> cur_pos = (sliding_window -> cur_pos) & (SLIDING_WINDOW_MASK);
+    unsigned short int cur_pos = (SLIDING_WINDOW_SIZE + (sliding_window -> out_pos) - distance);
+    cur_pos = (cur_pos) & (SLIDING_WINDOW_MASK);
 
     // Copy from the sliding window
     for (unsigned short int i = 0; i < length; ++i, ++(*index)) {
-        (sliding_window -> window)[sliding_window -> out_pos] = (sliding_window -> window)[sliding_window -> cur_pos];
-        (*dest)[*index] = ((sliding_window -> window)[sliding_window -> cur_pos]);
-        //debug_print(WHITE, "cur_pos: %u, out_pos: %u, data: %u\n", sliding_window -> cur_pos, sliding_window -> out_pos, (*dest)[*index]);
-
-        // Advance to the next output position
-        sliding_window -> out_pos = ((sliding_window -> out_pos) + 1) & (SLIDING_WINDOW_MASK);
-
+        (*dest)[*index] = ((sliding_window -> window)[cur_pos]);
+        //debug_print(WHITE, "copy data: %u\n", (*dest)[*index]);
         // Advance to the next byte to copy
-        sliding_window -> cur_pos = ((sliding_window -> cur_pos) + 1) & (SLIDING_WINDOW_MASK);
+        cur_pos = ((cur_pos) + 1) & (SLIDING_WINDOW_MASK);
     }
     
     return;
@@ -285,7 +279,7 @@ static void decode_dynamic_huffman_tables(BitStream* bit_stream, DynamicHF* lite
 
 unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* decompressed_data_length, unsigned char ignore_adler_crc) {    
     // Initialize decompressed data
-    SlidingWindow sliding_window = (SlidingWindow) {.cur_pos = 0, .out_pos = 0};
+    SlidingWindow sliding_window = (SlidingWindow) {.out_pos = 0};
     sliding_window.window = (unsigned char*) calloc(SLIDING_WINDOW_SIZE, sizeof(unsigned char));
     unsigned char* decompressed_data = (unsigned char*) calloc(1, sizeof(unsigned char));
     *decompressed_data_length = 0;
@@ -341,6 +335,8 @@ unsigned char* deflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
             unsigned short int decoded_value = 0;
             if (type == 1) decoded_value = decode_hf_fixed(bit_stream, code, fixed_mins, fixed_maxs, fixed_val_ptr, literals_hf.bit_length);
             else decoded_value = decode_hf(bit_stream, code, literals_hf);
+            //debug_print(WHITE, "decoded_value: %u\n", decoded_value);
+            
             if (decoded_value == 0xFFFF) {
                 *err = 1;
                 free(sliding_window.window);
