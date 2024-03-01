@@ -18,6 +18,8 @@
                                 if (color_type == valid_color_types[i])     \
                                     index = i;                              \
 
+#define GET_INTERVAL_FROM_BIT_DEPTH(bit_depth) (1 + (bit_depth == 16))
+
 const unsigned char valid_bit_depths[] = {1, 2, 4, 8, 16};
 const PNGType valid_color_types[] = {GREYSCALE, 0, TRUECOLOR, INDEXED_COLOR, GREYSCALE_ALPHA, 0, TRUECOLOR_ALPHA};
 const unsigned char color_types_starts[] = {0, 0, 3, 0, 3, 0, 3};
@@ -41,6 +43,21 @@ static bool is_str_equal(unsigned char* str_a, unsigned char* str_b, unsigned in
         }
     }
     return TRUE;
+}
+
+static void assign_filter_interval(PNGImage* image) {
+    if (image -> color_type == GREYSCALE) {
+        image -> filter_interval = GET_INTERVAL_FROM_BIT_DEPTH(image -> bit_depth);
+    } else if (image -> color_type == GREYSCALE_ALPHA) {
+        image -> filter_interval = (2 * GET_INTERVAL_FROM_BIT_DEPTH(image -> bit_depth));
+    } else if (image -> color_type == INDEXED_COLOR) {
+        image -> filter_interval = 1;
+    } else if (image -> color_type == TRUECOLOR) {
+        image -> filter_interval = (3 * GET_INTERVAL_FROM_BIT_DEPTH(image -> bit_depth));
+    } else if (image -> color_type == TRUECOLOR_ALPHA) {
+        image -> filter_interval = (4 * GET_INTERVAL_FROM_BIT_DEPTH(image -> bit_depth));
+    }
+    return;
 }
 
 static bool is_valid_depth_color_combination(unsigned char bit_depth, PNGType color_type) {
@@ -139,15 +156,53 @@ static void copy_decompressed_data(PNGImage* image, unsigned char* decompressed_
     return;
 }
 
+static unsigned char sub_filter(unsigned char* decompressed_data, unsigned int pos, unsigned char interval) {
+    return decompressed_data[pos] + (interval > pos ? 0 : decompressed_data[pos - interval]);
+}
+
+static unsigned char up_filter(unsigned char* decompressed_data, unsigned int pos, unsigned int row_len) {
+    return decompressed_data[pos] + decompressed_data[pos - row_len];
+}
+
+static unsigned char average_filter(unsigned char* decompressed_data, unsigned int len) {
+    return decompressed_data[0];
+}
+
+static unsigned char paeth_filter(unsigned char* decompressed_data, unsigned int len) {
+    return decompressed_data[0];
+}
+
 static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned int decompressed_data_size) {
-    for (unsigned int i = 0, row = 0; i < decompressed_data_size; ++i) {
+    unsigned char interval = image -> filter_interval;
+    unsigned int row_len = (image -> image_data).width * (image -> image_data).components;
+    for (unsigned int i = 0, row = 0; i < decompressed_data_size; ++i, ++row) {
         unsigned char filter_type = decompressed_data[i];
-        if (filter_type) {
-            debug_print(WHITE, "%u row filter: %u, %u\n", row, filter_type, filter_type & 7);
-            i += (image -> image_data).width * (image -> image_data).components;
-            row++;
-        }
+        debug_print(WHITE, "%u row filter: %u, %u\n", row, filter_type, filter_type & 7);
+        // i += (image -> image_data).width * (image -> image_data).components;
         filter_type = MIN(filter_type, 4);
+        unsigned int* size = &((image -> image_data).size);
+        switch (filter_type) {
+            case 0: {
+                for (unsigned int index = 0; index < row_len; ++i, ++index, ++(*size)) {
+                    (image -> image_data).decoded_data[*size] = decompressed_data[i + 1];
+                }
+                break;
+            }            
+
+            case 1: {
+                for (unsigned int index = 0; index < row_len; ++i, ++index, ++(*size)) {
+                    (image -> image_data).decoded_data[*size] = sub_filter(decompressed_data, i + 1, interval);
+                }
+                break;
+            }           
+            
+            case 2: {
+                for (unsigned int index = 0; index < row_len; ++i, ++index, ++(*size)) {
+                    (image -> image_data).decoded_data[*size] = up_filter(decompressed_data, i + 1, row_len);
+                }
+                break;
+            }
+        }
     }
     return;
 }
@@ -184,6 +239,7 @@ void decode_ihdr(PNGImage* image, Chunk ihdr_chunk) {
     }
 
     assign_components_count(image);
+    assign_filter_interval(image);
 
     debug_print(YELLOW, "bit_depth: %u\n", image -> bit_depth);
     debug_print(YELLOW, "color_type: %s\n", png_types[image -> color_type]);

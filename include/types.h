@@ -146,6 +146,7 @@ typedef struct PNGImage {
     unsigned char filter_method;
     unsigned char interlace_method;
     RGB palette;
+    unsigned char filter_interval;
 } PNGImage;
 
 #define SET_COLOR(color) printf("\033[%d;1m", color)
