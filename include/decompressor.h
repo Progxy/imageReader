@@ -112,8 +112,8 @@ static unsigned short int decode_hf(BitStream* bit_stream, unsigned short int co
 }
 
 static void decode_lengths(BitStream* bit_stream, DynamicHF decoder_hf, DynamicHF* literals_hf, DynamicHF* distance_hf) {
-    literals_hf -> lengths = (unsigned char*) calloc(literals_hf -> size, sizeof(unsigned char));
-    distance_hf -> lengths = (unsigned char*) calloc(distance_hf -> size, sizeof(unsigned char));
+    literals_hf -> lengths = (unsigned char*) calloc(286, sizeof(unsigned char));
+    distance_hf -> lengths = (unsigned char*) calloc(30, sizeof(unsigned char));
     unsigned short int index = 0;
 
     while (index < (literals_hf -> size + distance_hf -> size)) {
@@ -270,10 +270,12 @@ static void decode_dynamic_huffman_tables(BitStream* bit_stream, DynamicHF* lite
     decode_lengths(bit_stream, decoder_hf, literals_hf, distance_hf);
     deallocate_dynamic_hf(&decoder_hf);
 
+    literals_hf -> size = 286;
+    distance_hf -> size = 30;
+
     generate_codes(literals_hf);
     generate_codes(distance_hf);
 
-    debug_print(BLUE, "bit_length: %u, size: %u\n", literals_hf -> bit_length, literals_hf -> size);
     return;
 }
 
@@ -322,7 +324,6 @@ unsigned char* inflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
         // Select between the two huffman tables
         if (type == 2) {
             decode_dynamic_huffman_tables(bit_stream, &literals_hf, &distance_hf);
-            debug_print(BLUE, "check bit_length: %u, size: %u\n", literals_hf.bit_length, literals_hf.size);
         } else {
             literals_hf.bit_length = 4;            
             distance_hf.bit_length = 1;
