@@ -24,6 +24,7 @@ const unsigned char valid_bit_depths[] = {1, 2, 4, 8, 16};
 const PNGType valid_color_types[] = {GREYSCALE, 0, TRUECOLOR, INDEXED_COLOR, GREYSCALE_ALPHA, 0, TRUECOLOR_ALPHA};
 const unsigned char color_types_starts[] = {0, 0, 3, 0, 3, 0, 3};
 const unsigned char color_types_lengths[] = {5, 0, 2, 4, 2, 0, 2};
+const char* filter_types_names[] = {"NONE", "SUBTRACT", "UP", "AVERAGE", "PAETH"};
 
 /* -------------------------------------------------------------------------------------- */
 
@@ -147,45 +148,57 @@ static void convert_to_RGB(PNGImage* image) {
     return;
 }
 
-static void copy_decompressed_data(PNGImage* image, unsigned char* decompressed_data, unsigned int decompressed_data_len) {
-    (image -> image_data).decoded_data = (unsigned char*) realloc((image -> image_data).decoded_data, sizeof(unsigned char) * ((image -> image_data).size + decompressed_data_len));
-    for (unsigned int i = 0, index = 0; i < decompressed_data_len; ++i, ++index, ++(image -> image_data).size) {
-        (image -> image_data).decoded_data[index] = decompressed_data[i];
-    }
-    free(decompressed_data);
-    return;
-}
-
 static unsigned char sub_filter(unsigned char* decompressed_data, unsigned int pos, unsigned char interval) {
     return decompressed_data[pos] + (interval > pos ? 0 : decompressed_data[pos - interval]);
 }
 
 static unsigned char up_filter(unsigned char* decompressed_data, unsigned int pos, unsigned int row_len) {
-    return decompressed_data[pos] + decompressed_data[pos - row_len];
+    return decompressed_data[pos] + (pos < row_len ? 0 : decompressed_data[pos - row_len]);
 }
 
-static unsigned char average_filter(unsigned char* decompressed_data, unsigned int len) {
+static unsigned char average_filter(unsigned char* decompressed_data, unsigned int pos, unsigned int row_len, unsigned char interval) {
+    return decompressed_data[pos] + ((interval > pos ? 0 : decompressed_data[pos - interval]) + (pos < row_len ? 0 : decompressed_data[pos - row_len])) / 2;
     return decompressed_data[0];
 }
 
-static unsigned char paeth_filter(unsigned char* decompressed_data, unsigned int len) {
-    return decompressed_data[0];
+static unsigned char paeth_predictor(unsigned char left, unsigned char above, unsigned char upper_left) {
+    int pa = abs(above - upper_left);
+    int pb = abs(left - upper_left);
+    int pc = abs(left - upper_left + above - upper_left);
+
+    if ((pa <= pb) && (pa <= pc)) return left;
+    else if (pb <= pc) return above;
+    return upper_left;
+}
+
+static unsigned char paeth_filter(unsigned char* decompressed_data, unsigned int pos, unsigned int row_len, unsigned char interval) {
+    return decompressed_data[pos] + paeth_predictor((interval > pos ? 0 : decompressed_data[pos - interval]), (pos < row_len ? 0 : decompressed_data[pos - row_len]), (pos < (row_len + interval) ? 0 : decompressed_data[pos - row_len - interval]));
 }
 
 static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned int decompressed_data_size) {
     unsigned char interval = image -> filter_interval;
     unsigned int row_len = (image -> image_data).width * (image -> image_data).components;
+
+    unsigned int none = 0;
+    unsigned int subtract = 0;
+    unsigned int up = 0;
+    unsigned int average = 0;
+    unsigned int paeth = 0;
+
     for (unsigned int i = 0, row = 0; i < decompressed_data_size; ++i, ++row) {
         unsigned char filter_type = decompressed_data[i];
-        debug_print(WHITE, "%u row filter: %u, %u\n", row, filter_type, filter_type & 7);
-        // i += (image -> image_data).width * (image -> image_data).components;
         filter_type = MIN(filter_type, 4);
+        debug_print(WHITE, "%u row, filter: %s - %u, i: %u out of %u\n", row, filter_types_names[filter_type], decompressed_data[i], i, decompressed_data_size);
+        // i += (image -> image_data).width * (image -> image_data).components;
         unsigned int* size = &((image -> image_data).size);
+        debug_print(YELLOW, "filter_type: %u, image size: %u\n", filter_type, *size);
+        (image -> image_data).decoded_data = (unsigned char*) realloc((image -> image_data).decoded_data, sizeof(unsigned char) * (*size + row_len));
         switch (filter_type) {
             case 0: {
                 for (unsigned int index = 0; index < row_len; ++i, ++index, ++(*size)) {
                     (image -> image_data).decoded_data[*size] = decompressed_data[i + 1];
                 }
+                none++;
                 break;
             }            
 
@@ -193,6 +206,7 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
                 for (unsigned int index = 0; index < row_len; ++i, ++index, ++(*size)) {
                     (image -> image_data).decoded_data[*size] = sub_filter(decompressed_data, i + 1, interval);
                 }
+                subtract++;
                 break;
             }           
             
@@ -200,10 +214,31 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
                 for (unsigned int index = 0; index < row_len; ++i, ++index, ++(*size)) {
                     (image -> image_data).decoded_data[*size] = up_filter(decompressed_data, i + 1, row_len);
                 }
+                up++;
+                break;
+            }
+            
+            case 3: {
+                for (unsigned int index = 0; index < row_len; ++i, ++index, ++(*size)) {
+                    (image -> image_data).decoded_data[*size] = average_filter(decompressed_data, i + 1, row_len, interval);
+                }
+                average++;
+                break;
+            }            
+            
+            case 4: {
+                for (unsigned int index = 0; index < row_len; ++i, ++index, ++(*size)) {
+                    (image -> image_data).decoded_data[*size] = paeth_filter(decompressed_data, i + 1, row_len, interval);
+                }
+                paeth++;
                 break;
             }
         }
     }
+
+    debug_print(YELLOW, "none: %u, subtract: %u, up: %u, average: %u, paeth: %u\n", none, subtract, up, average, paeth);
+    free(decompressed_data);
+    
     return;
 }
 
@@ -329,6 +364,7 @@ void decode_idat(PNGImage* image, Chunk idat_chunk) {
     unsigned char err = 0;
     unsigned int stream_length = 0;
     unsigned char* decompressed_stream = inflate(image -> bit_stream, &err, &stream_length, TRUE);
+    debug_print(YELLOW, "\n");
     debug_print(YELLOW, "read: %u, length: %u\n", (image -> bit_stream) -> byte, idat_chunk.length + idat_chunk.pos);
     
     if (err) {
@@ -337,17 +373,17 @@ void decode_idat(PNGImage* image, Chunk idat_chunk) {
         return;
     }
 
+    debug_print(YELLOW, "\n");
+    debug_print(YELLOW, "starting defiltering...\n");
+    defilter(image, decompressed_stream, stream_length);
+    debug_print(WHITE, "defiltered data len: %u\n\n", (image -> image_data).size);
+    debug_print(YELLOW, "\n");
+
     if (image -> interlace_method) {
         error_print("implement the interlacing Adam 7 method...\n");
         (image -> image_data).error = DECODING_ERROR;
         return;
     }
-
-    defilter(image, decompressed_stream, stream_length);
-
-    copy_decompressed_data(image, decompressed_stream, stream_length);
-    debug_print(WHITE, "decompressed data len: %u\n\n", (image -> image_data).size);
-    debug_print(YELLOW, "\n");
 
     return;
 }
@@ -396,9 +432,9 @@ Image decode_png(FileData* image_file) {
 
     debug_print(YELLOW, "\n");
 
-    if ((image -> color_type == TRUECOLOR) || (image -> color_type == TRUECOLOR_ALPHA)) {
-        convert_to_RGB(image);
-    }
+    // if ((image -> color_type == TRUECOLOR) || (image -> color_type == TRUECOLOR_ALPHA)) {
+    //     convert_to_RGB(image);
+    // }
 
     // Deallocate stuff
     deallocate_bit_stream(image -> bit_stream);

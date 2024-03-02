@@ -52,6 +52,7 @@ void* get_next_n_byte(BitStream* bit_stream, unsigned int n, unsigned char size)
     for (unsigned int i = 0; i < (n * size); ++i) {
         get_next_byte(bit_stream);
         data_ptr[i] = bit_stream -> current_byte;
+        if (bit_stream -> error) return data;
     }
 
     return data;
