@@ -241,7 +241,6 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
     }
 
     debug_print(YELLOW, "none: %u, subtract: %u, up: %u, average: %u, paeth: %u\n", none, subtract, up, average, paeth);
-    free(decompressed_data);
     
     return;
 }
@@ -365,11 +364,15 @@ void decode_idat(PNGImage* image, Chunk idat_chunk) {
     set_byte(image -> bit_stream, idat_chunk.pos);
     debug_print(BLUE, "init deflating...\n");
 
-    unsigned char err = 0;
-    unsigned int stream_length = 0;
-    unsigned char* decompressed_stream = inflate(image -> bit_stream, &err, &stream_length, FALSE);
+    unsigned char* compressed_data = get_next_n_byte_uc(image -> bit_stream, idat_chunk.length);
     debug_print(YELLOW, "\n");
     debug_print(YELLOW, "read: %u, length: %u\n", (image -> bit_stream) -> byte, idat_chunk.length + idat_chunk.pos);
+    BitStream* compressed_stream = allocate_bit_stream(compressed_data, idat_chunk.length);
+
+    unsigned char err = 0;
+    unsigned int stream_length = 0;
+    unsigned char* decompressed_stream = inflate(compressed_stream, &err, &stream_length, TRUE);
+    deallocate_bit_stream(compressed_stream);
     
     if (err) {
         error_print((char*) decompressed_stream);
