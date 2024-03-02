@@ -162,9 +162,12 @@ static void copy_data(SlidingWindow* sliding_window, unsigned char** dest, unsig
     // Copy from the sliding window
     for (unsigned short int i = 0; i < length; ++i, ++(*index)) {
         (*dest)[*index] = ((sliding_window -> window)[cur_pos]);
+        ((sliding_window -> window)[sliding_window -> out_pos]) = ((sliding_window -> window)[cur_pos]);
         //debug_print(WHITE, "copy data: %u\n", (*dest)[*index]);
+        
         // Advance to the next byte to copy
         cur_pos = ((cur_pos) + 1) & (SLIDING_WINDOW_MASK);
+        sliding_window -> out_pos = ((sliding_window -> out_pos) + 1) & (SLIDING_WINDOW_MASK);
     }
     
     return;
