@@ -127,6 +127,10 @@ static void convert_to_RGB(PNGImage* image) {
         rgba.G[index] = get_next_n_bits(bit_stream, bit_depth, FALSE);
         rgba.B[index] = get_next_n_bits(bit_stream, bit_depth, FALSE);
         if (components == 4) rgba.A[index] = get_next_n_bits(bit_stream, bit_depth, FALSE);
+        if (bit_stream -> error) {
+            (image -> image_data).error = DECODING_ERROR;
+            return;
+        }
     }
 
     deallocate_bit_stream(bit_stream);
@@ -363,7 +367,7 @@ void decode_idat(PNGImage* image, Chunk idat_chunk) {
 
     unsigned char err = 0;
     unsigned int stream_length = 0;
-    unsigned char* decompressed_stream = inflate(image -> bit_stream, &err, &stream_length, TRUE);
+    unsigned char* decompressed_stream = inflate(image -> bit_stream, &err, &stream_length, FALSE);
     debug_print(YELLOW, "\n");
     debug_print(YELLOW, "read: %u, length: %u\n", (image -> bit_stream) -> byte, idat_chunk.length + idat_chunk.pos);
     
@@ -432,9 +436,9 @@ Image decode_png(FileData* image_file) {
 
     debug_print(YELLOW, "\n");
 
-    // if ((image -> color_type == TRUECOLOR) || (image -> color_type == TRUECOLOR_ALPHA)) {
-    //     convert_to_RGB(image);
-    // }
+    if ((image -> color_type == TRUECOLOR) || (image -> color_type == TRUECOLOR_ALPHA)) {
+        convert_to_RGB(image);
+    }
 
     // Deallocate stuff
     deallocate_bit_stream(image -> bit_stream);

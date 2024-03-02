@@ -390,7 +390,7 @@ unsigned char* inflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
     if ((adler_crc != adler_register) && (!ignore_adler_crc)) {
         *err = 1;
         free(decompressed_data);
-        debug_print(RED, "adler_register: 0x%x, adler_crc: 0x%x\n", adler_register, adler_crc);
+        error_print("adler_register: 0x%x, adler_crc: 0x%x\n", adler_register, adler_crc);
         return ((unsigned char*) "corrupted compressed data blocks");
     }
 
