@@ -68,7 +68,7 @@ unsigned char get_next_bit(BitStream* bit_stream, unsigned char reverse_flag) {
         bit_stream -> error = EXCEEDED_LENGTH;
         return 0;
     }
-    
+
     unsigned char bit_value = (((bit_stream -> stream)[bit_stream -> byte]) & (1 << (reverse_flag ? bit_stream -> bit : 7 - bit_stream -> bit))) != 0;
 
     // Update bit and byte position
