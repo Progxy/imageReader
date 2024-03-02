@@ -69,12 +69,24 @@ unsigned char get_next_bit(BitStream* bit_stream, unsigned char reverse_flag) {
         return 0;
     }
 
-    unsigned char bit_value = (((bit_stream -> stream)[bit_stream -> byte]) & (1 << (reverse_flag ? bit_stream -> bit : 7 - bit_stream -> bit))) != 0;
+    if (!reverse_flag) {
+        unsigned char bit_value = (((bit_stream -> stream)[bit_stream -> byte]) & (1 << (7 - bit_stream -> bit))) != 0;
 
-    // Update bit and byte position
-    (bit_stream -> bit)++;
-    (bit_stream -> byte) += (bit_stream -> bit) == 8;
-    (bit_stream -> bit) %= 8;
+        // Update bit and byte position
+        (bit_stream -> bit)++;
+        (bit_stream -> byte) += (bit_stream -> bit) == 8;
+        (bit_stream -> bit) %= 8;
+        return bit_value;
+    }
+
+    if (bit_stream -> bit <= 0) {
+        get_next_byte(bit_stream);
+        bit_stream -> bit = 8;
+    }
+    
+    unsigned char bit_value = (bit_stream -> current_byte) & 1;
+    bit_stream -> current_byte >>= 1;
+    (bit_stream -> bit)--;
 
     return bit_value;
 }

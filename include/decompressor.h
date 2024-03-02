@@ -205,13 +205,11 @@ static char* read_zlib_header(BitStream* bit_stream) {
     unsigned char zlib_flags = get_next_byte_uc(bit_stream);
     unsigned char compression_method = zlib_compress_data & 0x0F;
     unsigned char window_size = (zlib_compress_data & 0xF0) >> 4;
-    unsigned char check_bits = zlib_flags & 0x1F;
     unsigned char preset_dictionary = ((zlib_flags & 0x20) >> 5) & 0x01;
     unsigned char compression_level = ((zlib_flags & 0xC0) >> 6) & 0x03;
 
     debug_print(YELLOW, "compression_method: %u\n", compression_method);
     debug_print(YELLOW, "window_size: %u\n", window_size);
-    debug_print(YELLOW, "check_bits: %u\n", check_bits);    
     debug_print(YELLOW, "preset_dictionary: %u\n", preset_dictionary);
     debug_print(YELLOW, "compression_level: %u\n", compression_level);
     
@@ -221,6 +219,8 @@ static char* read_zlib_header(BitStream* bit_stream) {
         return ("invalid compression method");
     } else if (preset_dictionary) {
         return ("invalid compression method");
+    } else if ((zlib_compress_data * 256 + zlib_flags) % 31 != 0) {
+        return ("CMF+FLG checksum failed");
     }
     
     return NULL;
