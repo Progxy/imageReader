@@ -24,7 +24,20 @@ typedef struct SlidingWindow {
 
 /* ---------------------------------------------------------------------------------------------------------- */
 
-unsigned char* inflate(BitStream* bit_stream, unsigned char* err, unsigned int* decompressed_data_length, unsigned char ignore_adler_crc);
+static void deallocate_dynamic_hf(DynamicHF* hf);
+static unsigned char max_value(unsigned char* vec, unsigned short int len);
+static void generate_codes(DynamicHF* hf);
+static unsigned short int decode_hf_fixed(BitStream* bit_stream, unsigned short int code, const unsigned short int* mins, const unsigned short int* maxs, const unsigned short int* val_ptr, unsigned char bit_length);
+static unsigned short int decode_hf(BitStream* bit_stream, unsigned short int code, DynamicHF hf);
+static void decode_lengths(BitStream* bit_stream, DynamicHF decoder_hf, DynamicHF* literals_hf, DynamicHF* distance_hf);
+static void copy_data(SlidingWindow* sliding_window, unsigned char** dest, unsigned int* index, unsigned short int length, unsigned short int distance);
+static unsigned short int get_length(BitStream* bit_stream, unsigned short int value);
+static unsigned short int get_distance(BitStream* bit_stream, unsigned short int value);
+static void update_adler_crc(unsigned char value, unsigned int* adler_register);
+static char* read_zlib_header(BitStream* bit_stream);
+static unsigned char read_uncompressed_data(BitStream* bit_stream, unsigned char** decompressed_data, unsigned int* decompressed_data_length);
+static void decode_dynamic_huffman_tables(BitStream* bit_stream, DynamicHF* literals_hf, DynamicHF* distance_hf);
+unsigned char* inflate(BitStream* bit_stream, unsigned char* err, unsigned int* decompressed_data_length);
 
 /* ---------------------------------------------------------------------------------------------------------- */
 
@@ -281,7 +294,7 @@ static void decode_dynamic_huffman_tables(BitStream* bit_stream, DynamicHF* lite
     return;
 }
 
-unsigned char* inflate(BitStream* bit_stream, unsigned char* err, unsigned int* decompressed_data_length, unsigned char ignore_adler_crc) {    
+unsigned char* inflate(BitStream* bit_stream, unsigned char* err, unsigned int* decompressed_data_length) {    
     // Initialize decompressed data
     SlidingWindow sliding_window = (SlidingWindow) {.out_pos = 0};
     sliding_window.window = (unsigned char*) calloc(SLIDING_WINDOW_SIZE, sizeof(unsigned char));
@@ -390,7 +403,7 @@ unsigned char* inflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
 
     free(sliding_window.window);
 
-    if ((adler_crc != adler_register) && (!ignore_adler_crc)) {
+    if (adler_crc != adler_register) {
         *err = 1;
         free(decompressed_data);
         error_print("adler_register: 0x%x, adler_crc: 0x%x\n", adler_register, adler_crc);

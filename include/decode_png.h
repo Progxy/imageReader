@@ -194,7 +194,7 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
         debug_print(WHITE, "%u row, filter: %s - %u, i: %u out of %u\n", row, filter_types_names[filter_type], decompressed_data[i], i, decompressed_data_size);
         unsigned int* size = &((image -> image_data).size);
         debug_print(YELLOW, "filter_type: %u, image size: %u\n", filter_type, *size);
-        (image -> image_data).decoded_data = (unsigned char*) realloc((image -> image_data).decoded_data, sizeof(unsigned char) * (*size + row_len));
+        (image -> image_data).decoded_data = (unsigned char*) realloc((image -> image_data).decoded_data, sizeof(unsigned char) * ((*size) + row_len));
         switch (filter_type) {
             case 0: {
                 for (unsigned int index = 0; index < row_len; ++i, ++index, ++(*size)) {
@@ -374,7 +374,7 @@ void decode_idat(PNGImage* image, Chunk idat_chunk) {
 
     unsigned char err = 0;
     unsigned int stream_length = 0;
-    unsigned char* decompressed_stream = inflate(compressed_stream, &err, &stream_length, FALSE);
+    unsigned char* decompressed_stream = inflate(compressed_stream, &err, &stream_length);
     deallocate_bit_stream(compressed_stream);
     
     if (err) {
