@@ -7,7 +7,7 @@
 #include "./debug_print.h"
 
 #define SLIDING_WINDOW_SIZE 0x8000
-#define SLIDING_WINDOW_MASK 0x7FF
+#define SLIDING_WINDOW_MASK 0x7FFF
 
 // Fixed huffman literal/lengths codes
 const unsigned short int fixed_val_ptr[] = {256, 0, 280, 144};
