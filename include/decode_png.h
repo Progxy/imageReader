@@ -20,6 +20,11 @@
 
 #define GET_INTERVAL_FROM_BIT_DEPTH(bit_depth) (1 + (bit_depth == 16))
 
+#define GET_PIXEL(decompressed_data, row, row_len, col) decompressed_data[row * (row_len + 1) + col]
+#define GET_PIXEL_LEFT(decompressed_data, row, row_len, col, interval) (((row * (row_len + 1) + col - interval) < 0) ? 0 : decompressed_data[row * (row_len + 1) + col - interval])
+#define GET_PIXEL_ABOVE(decompressed_data, row, row_len, col) ((((row - 1) * (row_len + 1) + col) < 0) ? 0 : decompressed_data[(row - 1) * (row_len + 1) + col])
+#define GET_PIXEL_ABOVE_LEFT(decompressed_data, row, row_len, col, interval) ((((row - 1) * (row_len + 1) + col - interval) < 0) ? 0 : decompressed_data[(row - 1) * (row_len + 1) + col - interval])
+
 const unsigned char valid_bit_depths[] = {1, 2, 4, 8, 16};
 const PNGType valid_color_types[] = {GREYSCALE, 0, TRUECOLOR, INDEXED_COLOR, GREYSCALE_ALPHA, 0, TRUECOLOR_ALPHA};
 const unsigned char color_types_starts[] = {0, 0, 3, 0, 3, 0, 3};
@@ -152,17 +157,16 @@ static void convert_to_RGB(PNGImage* image) {
     return;
 }
 
-static unsigned char sub_filter(unsigned char* decompressed_data, unsigned int pos, unsigned char interval) {
-    return decompressed_data[pos] + (interval > pos ? 0 : decompressed_data[pos - interval]);
+static unsigned char sub_filter(unsigned char* decompressed_data, int row, int row_len, int col, unsigned char interval) {
+    return GET_PIXEL(decompressed_data, row, row_len, col) + GET_PIXEL_LEFT(decompressed_data, row, row_len, col, interval);
 }
 
-static unsigned char up_filter(unsigned char* decompressed_data, unsigned int pos, unsigned int row_len) {
-    return decompressed_data[pos] + (pos < row_len ? 0 : decompressed_data[pos - row_len]);
+static unsigned char up_filter(unsigned char* decompressed_data, int row, int row_len, int col) {
+    return GET_PIXEL(decompressed_data, row, row_len, col) + GET_PIXEL_ABOVE(decompressed_data, row, row_len, col);
 }
 
-static unsigned char average_filter(unsigned char* decompressed_data, unsigned int pos, unsigned int row_len, unsigned char interval) {
-    return decompressed_data[pos] + ((interval > pos ? 0 : decompressed_data[pos - interval]) + (pos < row_len ? 0 : decompressed_data[pos - row_len])) / 2;
-    return decompressed_data[0];
+static unsigned char average_filter(unsigned char* decompressed_data, int row, int row_len, int col, unsigned char interval) {
+    return GET_PIXEL(decompressed_data, row, row_len, col) + (GET_PIXEL_LEFT(decompressed_data, row, row_len, col, interval) + GET_PIXEL_ABOVE(decompressed_data, row, row_len, col)) / 2; 
 }
 
 static unsigned char paeth_predictor(unsigned char left, unsigned char above, unsigned char upper_left) {
@@ -175,13 +179,14 @@ static unsigned char paeth_predictor(unsigned char left, unsigned char above, un
     return upper_left;
 }
 
-static unsigned char paeth_filter(unsigned char* decompressed_data, unsigned int pos, unsigned int row_len, unsigned char interval) {
-    return decompressed_data[pos] + paeth_predictor((interval > pos ? 0 : decompressed_data[pos - interval]), (pos < row_len ? 0 : decompressed_data[pos - row_len]), (pos < (row_len + interval) ? 0 : decompressed_data[pos - row_len - interval]));
+static unsigned char paeth_filter(unsigned char* decompressed_data, int row, int row_len, int col, unsigned char interval) {
+    return GET_PIXEL(decompressed_data, row, row_len, col) + paeth_predictor(GET_PIXEL_LEFT(decompressed_data, row, row_len, col, interval), GET_PIXEL_ABOVE(decompressed_data, row, row_len, col), GET_PIXEL_ABOVE_LEFT(decompressed_data, row, row_len, col, interval)); 
 }
 
 static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned int decompressed_data_size) {
     unsigned char interval = image -> filter_interval;
-    unsigned int row_len = (image -> image_data).width * (image -> image_data).components;
+    int row_len = (image -> image_data).width * (image -> image_data).components;
+    int row = 0;
 
     unsigned int none = 0;
     unsigned int subtract = 0;
@@ -189,7 +194,7 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
     unsigned int average = 0;
     unsigned int paeth = 0;
 
-    for (unsigned int i = 0, row = 0; i < decompressed_data_size; ++i, ++row) {
+    for (unsigned int i = 0; i < decompressed_data_size; ++i, ++row) {
         unsigned char filter_type = decompressed_data[i];
         debug_print(WHITE, "%u row, filter: %s - %u, i: %u out of %u\n", row, filter_types_names[filter_type], decompressed_data[i], i, decompressed_data_size);
         unsigned int* size = &((image -> image_data).size);
@@ -197,40 +202,40 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
         (image -> image_data).decoded_data = (unsigned char*) realloc((image -> image_data).decoded_data, sizeof(unsigned char) * ((*size) + row_len));
         switch (filter_type) {
             case 0: {
-                for (unsigned int index = 0; index < row_len; ++i, ++index, ++(*size)) {
-                    (image -> image_data).decoded_data[*size] = decompressed_data[i + 1];
+                for (int index = 0; index < row_len; ++i, ++index, ++(*size)) {
+                    (image -> image_data).decoded_data[*size] = GET_PIXEL(decompressed_data, row, row_len, index);
                 }
                 none++;
                 break;
             }            
 
             case 1: {
-                for (unsigned int index = 0; index < row_len; ++i, ++index, ++(*size)) {
-                    (image -> image_data).decoded_data[*size] = sub_filter(decompressed_data, i + 1, interval);
+                for (int index = 0; index < row_len; ++i, ++index, ++(*size)) {
+                    (image -> image_data).decoded_data[*size] = sub_filter(decompressed_data, row, row_len, index, interval);
                 }
                 subtract++;
                 break;
             }           
             
             case 2: {
-                for (unsigned int index = 0; index < row_len; ++i, ++index, ++(*size)) {
-                    (image -> image_data).decoded_data[*size] = up_filter(decompressed_data, i + 1, row_len);
+                for (int index = 0; index < row_len; ++i, ++index, ++(*size)) {
+                    (image -> image_data).decoded_data[*size] = up_filter(decompressed_data, row, row_len, index);
                 }
                 up++;
                 break;
             }
             
             case 3: {
-                for (unsigned int index = 0; index < row_len; ++i, ++index, ++(*size)) {
-                    (image -> image_data).decoded_data[*size] = average_filter(decompressed_data, i + 1, row_len, interval);
+                for (int index = 0; index < row_len; ++i, ++index, ++(*size)) {
+                    (image -> image_data).decoded_data[*size] = average_filter(decompressed_data, row, row_len, index, interval);
                 }
                 average++;
                 break;
             }            
             
             case 4: {
-                for (unsigned int index = 0; index < row_len; ++i, ++index, ++(*size)) {
-                    (image -> image_data).decoded_data[*size] = paeth_filter(decompressed_data, i + 1, row_len, interval);
+                for (int index = 0; index < row_len; ++i, ++index, ++(*size)) {
+                    (image -> image_data).decoded_data[*size] = paeth_filter(decompressed_data, row, row_len, index, interval);
                 }
                 paeth++;
                 break;
