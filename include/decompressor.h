@@ -217,10 +217,10 @@ static char* read_zlib_header(BitStream* bit_stream) {
     
     if (compression_method != 8) {
         return ("invalid compression method");
-    } else if (window_size > 7) {
-        return ("invalid compression method");
+    } else if (window_size <= 7) {
+        return ("invalid window size");
     } else if (preset_dictionary) {
-        return ("invalid compression method");
+        return ("invalid preset dictionary");
     } else if ((zlib_compress_data * 256 + zlib_flags) % 31 != 0) {
         return ("CMF+FLG checksum failed");
     }
