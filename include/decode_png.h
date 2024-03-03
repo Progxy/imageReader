@@ -191,9 +191,7 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
 
     for (unsigned int i = 0, row = 0; i < decompressed_data_size; ++i, ++row) {
         unsigned char filter_type = decompressed_data[i];
-        filter_type = MIN(filter_type, 4);
         debug_print(WHITE, "%u row, filter: %s - %u, i: %u out of %u\n", row, filter_types_names[filter_type], decompressed_data[i], i, decompressed_data_size);
-        // i += (image -> image_data).width * (image -> image_data).components;
         unsigned int* size = &((image -> image_data).size);
         debug_print(YELLOW, "filter_type: %u, image size: %u\n", filter_type, *size);
         (image -> image_data).decoded_data = (unsigned char*) realloc((image -> image_data).decoded_data, sizeof(unsigned char) * (*size + row_len));
@@ -235,6 +233,11 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
                     (image -> image_data).decoded_data[*size] = paeth_filter(decompressed_data, i + 1, row_len, interval);
                 }
                 paeth++;
+                break;
+            }
+
+            default: {
+                warning_print("invalid filter type: %u\n", filter_type);
                 break;
             }
         }
