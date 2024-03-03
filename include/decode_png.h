@@ -371,7 +371,7 @@ void decode_idat(PNGImage* image, Chunk idat_chunk) {
 
     unsigned char err = 0;
     unsigned int stream_length = 0;
-    unsigned char* decompressed_stream = inflate(compressed_stream, &err, &stream_length, TRUE);
+    unsigned char* decompressed_stream = inflate(compressed_stream, &err, &stream_length, FALSE);
     deallocate_bit_stream(compressed_stream);
     
     if (err) {
