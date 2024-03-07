@@ -37,7 +37,11 @@ static bool is_str_equal(unsigned char* str_a, unsigned char* str_b, unsigned in
 static bool is_valid_depth_color_combination(unsigned char bit_depth, PNGType color_type);
 static void assign_components_count(PNGImage* image);
 static void convert_to_RGB(PNGImage* image);
+static int paeth_predictor(unsigned char left, unsigned char above, unsigned char above_left);
 void decode_ihdr(PNGImage* image, Chunk ihdr_chunk);
+void decode_plte(PNGImage* image, Chunk plte_chunk);
+void decode_idat(PNGImage* image, Chunk idat_chunk);
+void decode_iend(PNGImage* image, Chunk iend_chunk);
 Image decode_png(FileData* image_file);
 
 /* -------------------------------------------------------------------------------------- */
