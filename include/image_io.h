@@ -5,31 +5,54 @@
 #include <stdlib.h>
 #include "./debug_print.h"
 #include "./types.h"
+#include "./decode_jpeg.h"
+#include "./decode_png.h"
+#include "./decode_ppm.h"
 
 #define CHECK_JPEG(data) ((data)[0] == 0xFF && (data)[1] == 0xD8)
 
 static const unsigned char png_magic_numbers[] = {0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
 
-static bool check_image_file(FileData* image_file) {
-    if (CHECK_JPEG(image_file -> data)) {
-        image_file -> file_type = JPEG;
-        return TRUE;
-    }
-
+static bool is_file_png(unsigned char* image_file_data) {
     bool is_png = TRUE;
     for (unsigned char i = 0; i < 8; ++i) {
-        if ((image_file -> data)[i] != png_magic_numbers[i]) {
+        if ((image_file_data)[i] != png_magic_numbers[i]) {
             is_png = FALSE;
             break;
         }
     }
+    return is_png;
+}
 
-    if (is_png) {
+static bool is_file_ppm(unsigned char* image_file_data) {
+    return is_str_equal((unsigned char*) "P6", image_file_data, 2);
+}
+
+static bool check_image_file(FileData* image_file) {
+    if (CHECK_JPEG(image_file -> data)) {
+        image_file -> file_type = JPEG;
+        return TRUE;
+    } else if (is_file_png(image_file -> data)) {
         image_file -> file_type = PNG;
+        return TRUE;
+    } else if (is_file_ppm(image_file -> data)) {
+        image_file -> file_type = PPM;
         return TRUE;
     }
 
     return FALSE;
+}
+
+Image decode_image(FileData* image_file) {
+    Image image = {};
+    if (image_file -> file_type == JPEG) {
+        image = decode_jpeg(image_file);
+    } else if (image_file -> file_type == PNG) {
+        image = decode_png(image_file);
+    } else if (image_file -> file_type == PPM) {
+        image = decode_ppm(image_file);
+    }
+    return image;
 }
 
 bool read_image_file(FileData* image_file, const char* filename) {
@@ -71,6 +94,11 @@ bool read_image_file(FileData* image_file, const char* filename) {
 }
 
 bool create_ppm_image(Image image, const char* filename) {
+    if (image.size == 0) {
+        error_print("the image size is zero!\n");
+        return INVALID_IMAGE_SIZE;
+    }
+
     FILE* file = fopen(filename, "wb");
 
     debug_print(YELLOW, "\n");

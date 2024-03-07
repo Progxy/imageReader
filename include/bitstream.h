@@ -20,6 +20,7 @@ BitStream* allocate_bit_stream(unsigned char* data_stream, unsigned int size) {
 }
 
 void deallocate_bit_stream(BitStream* bit_stream) {
+    debug_print(BLUE, "deallocating bitstream...\n");
     free(bit_stream -> stream);
     free(bit_stream);
     return;
@@ -133,6 +134,30 @@ unsigned short int get_next_n_bits(BitStream* bit_stream, unsigned char n_bits, 
     }
     
     return bits;
+}
+
+static bool is_contained(unsigned char val, unsigned char* container, unsigned int container_len) {
+    for (unsigned int i = 0; i < container_len; ++i) {
+        if (container[i] == val) {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+char* get_str(BitStream* bit_stream, unsigned char* str_terminators, unsigned int terminators_num) {
+    char* str = (char*) calloc(1, sizeof(char));
+    unsigned int index = 0;
+    char str_data = get_next_byte_uc(bit_stream);
+
+    while (!is_contained(str_data, str_terminators, terminators_num)) {
+        str = (char*) realloc(str, (index + 1) * sizeof(char));
+        str[index] = str_data;
+        index++;
+        str_data = get_next_byte_uc(bit_stream); 
+    }
+
+    return str;
 }
 
 #endif //_BIT_STREAM_H_

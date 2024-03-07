@@ -1,10 +1,9 @@
 // The current file is an example of the implementation of the library, using gtk to print the image on a new window 
 
 #include <gtk/gtk.h>
-#undef FALSE
+#undef FALSE // Prevent redifinition
 #undef TRUE
-#include "./include/decode_jpeg.h"
-#include "./include/decode_png.h"
+#include "./include/image_io.h"
 
 static gboolean on_draw_event(GtkWidget *widget, cairo_t *cr, gpointer user_data) {
     (void) widget;
@@ -62,15 +61,11 @@ int main(int argc, char** argv) {
     bool status;
     
     if ((status = read_image_file(image_file, file_name))) {
+        error_print("terminate the program with the error code: %s\n", err_codes[status]);
         return status;
     }
 
-    Image image = {};
-    if (image_file -> file_type == JPEG) {
-        image = decode_jpeg(image_file);
-    } else if (image_file -> file_type == PNG) {
-        image = decode_png(image_file);
-    }
+    Image image = decode_image(image_file);
 
     if (image.error) {
         image.error = CLAMP(image.error, 0, sizeof(err_codes) / sizeof(err_codes[0]));
@@ -81,6 +76,7 @@ int main(int argc, char** argv) {
     draw_image(file_name, &image);
 
     if ((status = create_ppm_image(image, "./out/new_image.ppm"))) {
+        error_print("terminate the program with the error code: %s\n", err_codes[status]);
         return status;
     }
 

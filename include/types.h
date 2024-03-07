@@ -149,6 +149,11 @@ typedef struct PNGImage {
     unsigned char filter_interval;
 } PNGImage;
 
+typedef struct PPMImage {
+    Image image_data;
+    BitStream* bit_stream;
+} PPMImage;
+
 #define SET_COLOR(color) printf("\033[%d;1m", color)
 #define RESET_COLOR() printf("\033[0m")
 #define FALSE 0
