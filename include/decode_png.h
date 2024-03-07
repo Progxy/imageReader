@@ -382,14 +382,15 @@ void decode_idat(PNGImage* image, Chunk idat_chunk) {
     debug_print(YELLOW, "\n");
     debug_print(BLUE, "starting defiltering...\n");
     defilter(image, decompressed_stream, stream_length);
-    debug_print(WHITE, "defiltered data len: %u\n\n", (image -> image_data).size);
-    debug_print(YELLOW, "\n");
+    debug_print(WHITE, "defiltered data len: %u\n", (image -> image_data).size);
 
     if (image -> interlace_method) {
         error_print("implement the interlacing Adam 7 method...\n");
         (image -> image_data).error = DECODING_ERROR;
         return;
     }
+
+    debug_print(YELLOW, "\n");
 
     return;
 }
