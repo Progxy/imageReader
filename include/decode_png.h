@@ -312,6 +312,7 @@ void decode_ihdr(PNGImage* image, Chunk ihdr_chunk) {
 }
 
 void decode_plte(PNGImage* image, Chunk plte_chunk) {
+    debug_print(PURPLE, "type: %s, length: %u, pos: %u\n", plte_chunk.chunk_type, plte_chunk.length, plte_chunk.pos);
     if (plte_chunk.length % 3) {
         error_print("invalid length as it should be divisible by 3\n");
         (image -> image_data).error = DECODING_ERROR;
@@ -327,6 +328,8 @@ void decode_plte(PNGImage* image, Chunk plte_chunk) {
     }
 
     set_byte(image -> bit_stream, plte_chunk.pos);
+
+    debug_print(BLUE, "reading palette info...\n");
 
     unsigned int palette_size = plte_chunk.length / 3;
     unsigned int palette_size_limit = 1 << (image -> bit_depth);
@@ -346,6 +349,8 @@ void decode_plte(PNGImage* image, Chunk plte_chunk) {
         (image -> palette).G[i] = get_next_byte_uc(image -> bit_stream);
         (image -> palette).B[i] = get_next_byte_uc(image -> bit_stream);
     }
+
+    debug_print(BLUE, "palette info successfully read!\n\n");
 
     return;
 }
