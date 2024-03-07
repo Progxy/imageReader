@@ -30,6 +30,7 @@ const PNGType valid_color_types[] = {GREYSCALE, 0, TRUECOLOR, INDEXED_COLOR, GRE
 const unsigned char color_types_starts[] = {0, 0, 3, 0, 3, 0, 3};
 const unsigned char color_types_lengths[] = {5, 0, 2, 4, 2, 0, 2};
 const char* filter_types_names[] = {"NONE", "SUBTRACT", "UP", "AVERAGE", "PAETH"};
+const char* months_names[] = {"", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
 
 /* -------------------------------------------------------------------------------------- */
 
@@ -42,6 +43,7 @@ void decode_ihdr(PNGImage* image, Chunk ihdr_chunk);
 void decode_plte(PNGImage* image, Chunk plte_chunk);
 void decode_idat(PNGImage* image, Chunk idat_chunk);
 void decode_iend(PNGImage* image, Chunk iend_chunk);
+void decode_time(PNGImage* image, Chunk time_chunk);
 Image decode_png(FileData* image_file);
 
 /* -------------------------------------------------------------------------------------- */
@@ -405,6 +407,21 @@ void decode_iend(PNGImage* image, Chunk iend_chunk) {
     return;
 }
 
+void decode_time(PNGImage* image, Chunk time_chunk) {
+    debug_print(PURPLE, "type: %s, length: %u, pos: %u\n", time_chunk.chunk_type, time_chunk.length, time_chunk.pos);
+    set_byte(image -> bit_stream, time_chunk.pos);
+    unsigned short int year = get_next_bytes_us(image -> bit_stream);
+    unsigned char month = get_next_byte_uc(image -> bit_stream);
+    unsigned char day = get_next_byte_uc(image -> bit_stream);
+    unsigned char hour = get_next_byte_uc(image -> bit_stream);
+    unsigned char minute = get_next_byte_uc(image -> bit_stream);
+    unsigned char second = get_next_byte_uc(image -> bit_stream);
+
+    debug_print(WHITE, "Last modification time was at %u:%u:%u of %u %s %u\n\n", hour, minute, second, day, months_names[month], year);
+
+    return;
+}
+
 Image decode_png(FileData* image_file) {
     Chunks chunks = find_and_check_chunks(image_file -> data, image_file -> length);
     PNGImage* image = (PNGImage*) calloc(1, sizeof(PNGImage));
@@ -428,6 +445,9 @@ Image decode_png(FileData* image_file) {
             continue;
         } else if (is_str_equal((unsigned char*) "IEND", chunk.chunk_type, 4)) {
             decode_iend(image, chunk);
+            continue;
+        } else if (is_str_equal((unsigned char*) "tIME", chunk.chunk_type, 4)) {
+            decode_time(image, chunk);
             continue;
         }
 
