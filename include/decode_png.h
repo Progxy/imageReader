@@ -131,10 +131,11 @@ static void convert_to_RGB(PNGImage* image) {
     if (components == 4) rgba.A = (unsigned char*) calloc(new_size, sizeof(unsigned char));
 
     for (unsigned int index = 0; index < new_size; ++index) {
-        rgba.R[index] = get_next_n_bits(bit_stream, bit_depth, FALSE);
-        rgba.G[index] = get_next_n_bits(bit_stream, bit_depth, FALSE);
-        rgba.B[index] = get_next_n_bits(bit_stream, bit_depth, FALSE);
-        if (components == 4) rgba.A[index] = get_next_n_bits(bit_stream, bit_depth, FALSE);
+        unsigned char data = get_next_n_bits(bit_stream, bit_depth, FALSE);
+        rgba.R[index] = data;
+        rgba.G[index] = (image -> is_palette_defined) ? data : get_next_n_bits(bit_stream, bit_depth, FALSE);
+        rgba.B[index] = (image -> is_palette_defined) ? data : get_next_n_bits(bit_stream, bit_depth, FALSE);
+        if (components == 4) rgba.A[index] = (image -> is_palette_defined) ? data : get_next_n_bits(bit_stream, bit_depth, FALSE);
         if (bit_stream -> error) {
             (image -> image_data).error = DECODING_ERROR;
             return;
