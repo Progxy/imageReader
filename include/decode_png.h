@@ -26,7 +26,7 @@
 #define GET_PIXEL_ABOVE_LEFT(decompressed_data, row, row_len, col, interval) ((!row || (col < interval)) ? 0 : decompressed_data[row_len * (row - 1) + col - interval])
 
 const unsigned char valid_bit_depths[] = {1, 2, 4, 8, 16};
-const PNGType valid_color_types[] = {GREYSCALE, 0, TRUECOLOR, INDEXED_COLOR, GREYSCALE_ALPHA, 0, TRUECOLOR_ALPHA};
+const PNGType valid_color_types[] = {GREYSCALE, -1, TRUECOLOR, INDEXED_COLOR, GREYSCALE_ALPHA, -1, TRUECOLOR_ALPHA};
 const unsigned char color_types_starts[] = {0, 0, 3, 0, 3, 0, 3};
 const unsigned char color_types_lengths[] = {5, 0, 2, 4, 2, 0, 2};
 const char* months_names[] = {"", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
@@ -131,11 +131,11 @@ static void convert_to_RGB(PNGImage* image) {
     if (components == 4) rgba.A = (unsigned char*) calloc(new_size, sizeof(unsigned char));
 
     for (unsigned int index = 0; index < new_size; ++index) {
-        unsigned char data = get_next_n_bits(bit_stream, bit_depth, FALSE);
+        unsigned char data = get_next_byte_uc(bit_stream);
         rgba.R[index] = data;
-        rgba.G[index] = (image -> is_palette_defined) ? data : get_next_n_bits(bit_stream, bit_depth, FALSE);
-        rgba.B[index] = (image -> is_palette_defined) ? data : get_next_n_bits(bit_stream, bit_depth, FALSE);
-        if (components == 4) rgba.A[index] = (image -> is_palette_defined) ? data : get_next_n_bits(bit_stream, bit_depth, FALSE);
+        rgba.G[index] = (image -> is_palette_defined || image -> color_type == GREYSCALE || image -> color_type == GREYSCALE_ALPHA) ? data : get_next_byte_uc(bit_stream);
+        rgba.B[index] = (image -> is_palette_defined || image -> color_type == GREYSCALE || image -> color_type == GREYSCALE_ALPHA) ? data : get_next_n_bits(bit_stream, bit_depth, FALSE);
+        if (components == 4) rgba.A[index] = (image -> is_palette_defined) ? data : get_next_byte_uc(bit_stream);
         if (bit_stream -> error) {
             (image -> image_data).error = DECODING_ERROR;
             return;
@@ -172,7 +172,7 @@ static int paeth_predictor(unsigned char left, unsigned char above, unsigned cha
     return above_left;
 }
 
-static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned int decompressed_data_size) {
+static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned int decompressed_data_size, unsigned char bit_depth) {
     unsigned char interval = image -> filter_interval;
     unsigned int row_len = (image -> image_data).width * interval;
     unsigned int row = 0;
@@ -183,16 +183,19 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
     unsigned int average = 0;
     unsigned int paeth = 0;
 
-    debug_print(WHITE, "decompressed_data size: %u\n", decompressed_data_size);
+    BitStream* decompressed_stream = allocate_bit_stream(decompressed_data, decompressed_data_size);
+    unsigned int limit_size = ((image -> image_data).width * (image -> image_data).height * interval) + (image -> image_data).height;
+    debug_print(WHITE, "decompressed_data size: %u, limit_size: %u\n", decompressed_data_size, limit_size);
 
-    for (unsigned int i = 0; i < decompressed_data_size; ++i, ++row) {
-        unsigned char filter_type = decompressed_data[i];
+    for (unsigned int i = 0; i < limit_size; ++i, ++row) {
+        clean_bits(decompressed_stream);
+        unsigned char filter_type = get_next_byte_uc(decompressed_stream);
         unsigned int* size = &((image -> image_data).size);
         (image -> image_data).decoded_data = (unsigned char*) realloc((image -> image_data).decoded_data, sizeof(unsigned char) * ((*size) + row_len));
         switch (filter_type) {
             case 0: {
                 for (unsigned int col = 0; col < row_len; ++i, ++col, ++(*size)) {
-                    (image -> image_data).decoded_data[*size] = GET_PIXEL(decompressed_data, row, row_len + 1, col + 1);
+                    (image -> image_data).decoded_data[*size] = get_next_n_bits(decompressed_stream, bit_depth, FALSE) & 0xFF;
                 }
                 none++;
                 break;
@@ -200,7 +203,7 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
 
             case 1: {
                 for (unsigned int col = 0; col < row_len; ++i, ++col, ++(*size)) {
-                    (image -> image_data).decoded_data[*size] = ((int) GET_PIXEL(decompressed_data, row, row_len + 1, col + 1) + (int) GET_PIXEL_LEFT((image -> image_data).decoded_data, row, row_len, col, interval)) & 0xFF;
+                    (image -> image_data).decoded_data[*size] = ((int) (get_next_n_bits(decompressed_stream, bit_depth, FALSE) & 0xFF) + (int) GET_PIXEL_LEFT((image -> image_data).decoded_data, row, row_len, col, interval)) & 0xFF;
                 }
                 subtract++;
                 break;
@@ -208,7 +211,7 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
             
             case 2: {
                 for (unsigned int col = 0; col < row_len; ++i, ++col, ++(*size)) {
-                    (image -> image_data).decoded_data[*size] = ((int) GET_PIXEL(decompressed_data, row, row_len + 1, col + 1) + (int) GET_PIXEL_ABOVE((image -> image_data).decoded_data, row, row_len, col)) & 0xFF;
+                    (image -> image_data).decoded_data[*size] = ((int) (get_next_n_bits(decompressed_stream, bit_depth, FALSE) & 0xFF) + (int) GET_PIXEL_ABOVE((image -> image_data).decoded_data, row, row_len, col)) & 0xFF;
                 }
                 up++;
                 break;
@@ -216,7 +219,7 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
             
             case 3: {
                 for (unsigned int col = 0; col < row_len; ++i, ++col, ++(*size)) {
-                    (image -> image_data).decoded_data[*size] = (GET_PIXEL(decompressed_data, row, row_len + 1, col + 1) + ((int) GET_PIXEL_LEFT((image -> image_data).decoded_data, row, row_len, col, interval) + (int) GET_PIXEL_ABOVE((image -> image_data).decoded_data, row, row_len, col)) / 2) & 0xFF;
+                    (image -> image_data).decoded_data[*size] = ((int) (get_next_n_bits(decompressed_stream, bit_depth, FALSE) & 0xFF) + ((int) GET_PIXEL_LEFT((image -> image_data).decoded_data, row, row_len, col, interval) + (int) GET_PIXEL_ABOVE((image -> image_data).decoded_data, row, row_len, col)) / 2) & 0xFF;
                 }
                 average++;
                 break;
@@ -224,7 +227,7 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
             
             case 4: {
                 for (unsigned int col = 0; col < row_len; ++i, ++col, ++(*size)) {
-                    (image -> image_data).decoded_data[*size] = (GET_PIXEL(decompressed_data, row, row_len + 1, col + 1) + paeth_predictor(GET_PIXEL_LEFT((image -> image_data).decoded_data, row, row_len, col, interval), GET_PIXEL_ABOVE((image -> image_data).decoded_data, row, row_len, col), GET_PIXEL_ABOVE_LEFT((image -> image_data).decoded_data, row, row_len, col, interval)));
+                    (image -> image_data).decoded_data[*size] = ((int) (get_next_n_bits(decompressed_stream, bit_depth, FALSE) & 0xFF) + paeth_predictor(GET_PIXEL_LEFT((image -> image_data).decoded_data, row, row_len, col, interval), GET_PIXEL_ABOVE((image -> image_data).decoded_data, row, row_len, col), GET_PIXEL_ABOVE_LEFT((image -> image_data).decoded_data, row, row_len, col, interval)));
                 }
                 paeth++;
                 break;
@@ -239,6 +242,8 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
 
     debug_print(YELLOW, "none: %u, subtract: %u, up: %u, average: %u, paeth: %u\n", none, subtract, up, average, paeth);
     
+    deallocate_bit_stream(decompressed_stream);
+
     return;
 }
 
@@ -389,7 +394,7 @@ void decode_idat(PNGImage* image, Chunk idat_chunk) {
 
     debug_print(YELLOW, "\n");
     debug_print(BLUE, "starting defiltering...\n");
-    defilter(image, decompressed_stream, stream_length);
+    defilter(image, decompressed_stream, stream_length, image -> bit_depth);
     debug_print(WHITE, "defiltered data len: %u\n", (image -> image_data).size);
 
     if (image -> interlace_method) {
@@ -470,9 +475,7 @@ Image decode_png(FileData* image_file) {
 
     debug_print(YELLOW, "\n");
 
-    if ((image -> color_type == TRUECOLOR) || (image -> color_type == TRUECOLOR_ALPHA) || (image -> color_type == INDEXED_COLOR)) {
-        convert_to_RGB(image);
-    }
+    convert_to_RGB(image);
 
     // Deallocate stuff
     deallocate_bit_stream(image -> bit_stream);

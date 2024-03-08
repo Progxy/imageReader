@@ -160,4 +160,12 @@ char* get_str(BitStream* bit_stream, unsigned char* str_terminators, unsigned in
     return str;
 }
 
+void clean_bits(BitStream* bit_stream) {
+    if (bit_stream -> bit) {
+        (bit_stream -> byte)++;
+        bit_stream -> bit = 0;
+    }
+    return;
+}
+
 #endif //_BIT_STREAM_H_
