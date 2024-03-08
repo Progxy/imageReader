@@ -14,7 +14,7 @@
                                     return TRUE                                 \
 
 #define CHECK_VALID_COLOR_TYPE(color_type)                                  \
-                            for (unsigned char i = 0; i < 5; ++i)           \
+                            for (unsigned char i = 0; i < 7; ++i)           \
                                 if (color_type == valid_color_types[i])     \
                                     index = i;                              \
 
@@ -29,7 +29,6 @@ const unsigned char valid_bit_depths[] = {1, 2, 4, 8, 16};
 const PNGType valid_color_types[] = {GREYSCALE, 0, TRUECOLOR, INDEXED_COLOR, GREYSCALE_ALPHA, 0, TRUECOLOR_ALPHA};
 const unsigned char color_types_starts[] = {0, 0, 3, 0, 3, 0, 3};
 const unsigned char color_types_lengths[] = {5, 0, 2, 4, 2, 0, 2};
-const char* filter_types_names[] = {"NONE", "SUBTRACT", "UP", "AVERAGE", "PAETH"};
 const char* months_names[] = {"", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
 
 /* -------------------------------------------------------------------------------------- */
@@ -80,8 +79,6 @@ static bool is_valid_depth_color_combination(unsigned char bit_depth, PNGType co
         return FALSE;
     }
 
-    debug_print(YELLOW, "color_type: %s\n", png_types[color_type]);
-    
     CHECK_VALID_BIT_DEPTH(bit_depth, color_types_starts[index], color_types_lengths[index]);
     
     return FALSE;
@@ -133,7 +130,7 @@ static void convert_to_RGB(PNGImage* image) {
     rgba.B = (unsigned char*) calloc(new_size, sizeof(unsigned char));
     if (components == 4) rgba.A = (unsigned char*) calloc(new_size, sizeof(unsigned char));
 
-    for (unsigned int i = 0, index = 0; i < ((new_size * bit_depth) / 8); ++i, ++index) {
+    for (unsigned int index = 0; index < new_size; ++index) {
         rgba.R[index] = get_next_n_bits(bit_stream, bit_depth, FALSE);
         rgba.G[index] = get_next_n_bits(bit_stream, bit_depth, FALSE);
         rgba.B[index] = get_next_n_bits(bit_stream, bit_depth, FALSE);
@@ -149,10 +146,10 @@ static void convert_to_RGB(PNGImage* image) {
     (image -> image_data).size = 0;
     
     for (unsigned int i = 0, index = 0; i < (width * height * components); i += components, ++index, ((image -> image_data).size) += components) {
-        ((image -> image_data).decoded_data)[i] = rgba.R[index];
-        ((image -> image_data).decoded_data)[i + 1] = rgba.G[index];
-        ((image -> image_data).decoded_data)[i + 2] = rgba.B[index];
-        if (components == 4) ((image -> image_data).decoded_data)[i + 3] = rgba.A[index];
+        ((image -> image_data).decoded_data)[i] = (image -> is_palette_defined) ? (image -> palette).R[rgba.R[index]] : rgba.R[index];
+        ((image -> image_data).decoded_data)[i + 1] = (image -> is_palette_defined) ? (image -> palette).G[rgba.G[index]] : rgba.G[index];
+        ((image -> image_data).decoded_data)[i + 2] = (image -> is_palette_defined) ? (image -> palette).B[rgba.B[index]] : rgba.B[index];
+        if (components == 4) ((image -> image_data).decoded_data)[i + 3] = (image -> is_palette_defined) ? (image -> palette).A[rgba.A[index]] : rgba.A[index];
     }
 
     free(rgba.R);
@@ -176,7 +173,7 @@ static int paeth_predictor(unsigned char left, unsigned char above, unsigned cha
 
 static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned int decompressed_data_size) {
     unsigned char interval = image -> filter_interval;
-    unsigned int row_len = (image -> image_data).width * (image -> image_data).components;
+    unsigned int row_len = (image -> image_data).width * interval;
     unsigned int row = 0;
 
     unsigned int none = 0;
@@ -233,7 +230,7 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
             }
 
             default: {
-                warning_print("invalid filter type: %u\n", filter_type);
+                warning_print("invalid filter type: %u, row: %u, row_len: %u, i: %u\n", filter_type, row + 1, row_len, i);
                 break;
             }
         }
@@ -269,6 +266,9 @@ void decode_ihdr(PNGImage* image, Chunk ihdr_chunk) {
     image -> bit_depth = get_next_byte_uc(image -> bit_stream);
     image -> color_type = get_next_byte_uc(image -> bit_stream);
     
+    debug_print(YELLOW, "bit_depth: %u\n", image -> bit_depth);
+    debug_print(YELLOW, "color_type: %s\n", png_types[image -> color_type]);
+
     if (!is_valid_depth_color_combination(image -> bit_depth, image -> color_type)) {
         error_print("invalid bit depth [%u] and color type [%u] combination\n", image -> bit_depth, image -> color_type);
         (image -> image_data).error = INVALID_DEPTH_COLOR_COMBINATION;
@@ -278,8 +278,8 @@ void decode_ihdr(PNGImage* image, Chunk ihdr_chunk) {
     assign_components_count(image);
     assign_filter_interval(image);
 
-    debug_print(YELLOW, "bit_depth: %u\n", image -> bit_depth);
-    debug_print(YELLOW, "color_type: %s\n", png_types[image -> color_type]);
+    debug_print(YELLOW, "components: %u\n", (image -> image_data).components);
+    debug_print(YELLOW, "filter interval: %u\n", image -> filter_interval);
 
     image -> compression_method = get_next_byte_uc(image -> bit_stream);
     if (image -> compression_method) {
@@ -350,6 +350,8 @@ void decode_plte(PNGImage* image, Chunk plte_chunk) {
         (image -> palette).B[i] = get_next_byte_uc(image -> bit_stream);
     }
 
+    image -> is_palette_defined = TRUE;
+
     debug_print(BLUE, "palette info successfully read!\n\n");
 
     return;
@@ -358,7 +360,7 @@ void decode_plte(PNGImage* image, Chunk plte_chunk) {
 void decode_idat(PNGImage* image, Chunk idat_chunk) {
     debug_print(PURPLE, "type: %s, length: %u, pos: %u\n", idat_chunk.chunk_type, idat_chunk.length, idat_chunk.pos);
     
-    if (((image -> color_type) == INDEXED_COLOR) && ((image -> palette).R == NULL)) {
+    if (((image -> color_type) == INDEXED_COLOR) && (!image -> is_palette_defined)) {
         error_print("the palette should be defined before the IDAT chunk\n");
         (image -> image_data).error = DECODING_ERROR;
         return;
@@ -433,6 +435,7 @@ Image decode_png(FileData* image_file) {
     PNGImage* image = (PNGImage*) calloc(1, sizeof(PNGImage));
     image -> bit_stream = allocate_bit_stream(image_file -> data, image_file -> length);
     image -> palette = (RGBA) { .R = NULL, .G = NULL, .B = NULL, .A = NULL };
+    image -> is_palette_defined = FALSE;
     (image -> image_data).decoded_data = (unsigned char*) calloc(1, sizeof(unsigned char));
     (image -> image_data).size = 0;
 
@@ -460,9 +463,13 @@ Image decode_png(FileData* image_file) {
         debug_print(PURPLE, "unknown type: %s, length: %u, pos: %u\n\n", chunk.chunk_type, chunk.length, chunk.pos);
     }
 
+    if ((image -> image_data).error) {
+        return image -> image_data;
+    }
+
     debug_print(YELLOW, "\n");
 
-    if ((image -> color_type == TRUECOLOR) || (image -> color_type == TRUECOLOR_ALPHA)) {
+    if ((image -> color_type == TRUECOLOR) || (image -> color_type == TRUECOLOR_ALPHA) || (image -> color_type == INDEXED_COLOR)) {
         convert_to_RGB(image);
     }
 

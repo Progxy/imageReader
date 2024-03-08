@@ -147,6 +147,7 @@ typedef struct PNGImage {
     unsigned char interlace_method;
     RGB palette;
     unsigned char filter_interval;
+    bool is_palette_defined;
 } PNGImage;
 
 typedef struct PPMImage {
