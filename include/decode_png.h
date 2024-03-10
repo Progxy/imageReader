@@ -193,7 +193,7 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
         switch (filter_type) {
             case 0: {
                 for (unsigned int col = 0; col < row_len; ++i, ++col, ++(*size)) {
-                    (image -> image_data).decoded_data[*size] = get_next_n_bits(decompressed_stream, bit_depth, FALSE) & 0xFF;
+                    (image -> image_data).decoded_data[*size] = get_next_n_bits(decompressed_stream, bit_depth, FALSE);
                 }
                 none++;
                 break;
@@ -201,7 +201,7 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
 
             case 1: {
                 for (unsigned int col = 0; col < row_len; ++i, ++col, ++(*size)) {
-                    int data = get_next_n_bits(decompressed_stream, bit_depth, FALSE) & 0xFF;
+                    unsigned char data = get_next_n_bits(decompressed_stream, bit_depth, FALSE);
                     (image -> image_data).decoded_data[*size] = (data + (int) GET_PIXEL_LEFT((image -> image_data).decoded_data, row, row_len, col, interval)) & 0xFF;
                 }
                 subtract++;
@@ -210,7 +210,7 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
             
             case 2: {
                 for (unsigned int col = 0; col < row_len; ++i, ++col, ++(*size)) {
-                    int data = get_next_n_bits(decompressed_stream, bit_depth, FALSE) & 0xFF;
+                    unsigned char data = get_next_n_bits(decompressed_stream, bit_depth, FALSE);
                     (image -> image_data).decoded_data[*size] = (data + (int) GET_PIXEL_ABOVE((image -> image_data).decoded_data, row, row_len, col)) & 0xFF;
                 }
                 up++;
@@ -219,7 +219,7 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
             
             case 3: {
                 for (unsigned int col = 0; col < row_len; ++i, ++col, ++(*size)) {
-                    int data = get_next_n_bits(decompressed_stream, bit_depth, FALSE) & 0xFF;
+                    unsigned char data = get_next_n_bits(decompressed_stream, bit_depth, FALSE);
                     (image -> image_data).decoded_data[*size] = (data + ((int) GET_PIXEL_LEFT((image -> image_data).decoded_data, row, row_len, col, interval) + (int) GET_PIXEL_ABOVE((image -> image_data).decoded_data, row, row_len, col)) / 2) & 0xFF;
                 }
                 average++;
@@ -228,7 +228,7 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
             
             case 4: {
                 for (unsigned int col = 0; col < row_len; ++i, ++col, ++(*size)) {
-                    int data = get_next_n_bits(decompressed_stream, bit_depth, FALSE) & 0xFF;
+                    unsigned char data = get_next_n_bits(decompressed_stream, bit_depth, FALSE);
                     (image -> image_data).decoded_data[*size] = (data + paeth_predictor(GET_PIXEL_LEFT((image -> image_data).decoded_data, row, row_len, col, interval), GET_PIXEL_ABOVE((image -> image_data).decoded_data, row, row_len, col), GET_PIXEL_ABOVE_LEFT((image -> image_data).decoded_data, row, row_len, col, interval)));
                 }
                 paeth++;
