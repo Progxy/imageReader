@@ -135,7 +135,7 @@ static void convert_to_RGB(PNGImage* image) {
         rgba.R[index] = data;
         rgba.G[index] = (image -> is_palette_defined || image -> color_type == GREYSCALE || image -> color_type == GREYSCALE_ALPHA) ? data : get_next_byte_uc(bit_stream);
         rgba.B[index] = (image -> is_palette_defined || image -> color_type == GREYSCALE || image -> color_type == GREYSCALE_ALPHA) ? data : get_next_n_bits(bit_stream, bit_depth, FALSE);
-        if (components == 4) rgba.A[index] = (image -> is_palette_defined) ? data : get_next_byte_uc(bit_stream);
+        if (components == 4) rgba.A[index] = get_next_byte_uc(bit_stream);
         if (bit_stream -> error) {
             (image -> image_data).error = DECODING_ERROR;
             return;
@@ -150,7 +150,7 @@ static void convert_to_RGB(PNGImage* image) {
         ((image -> image_data).decoded_data)[i] = (image -> is_palette_defined) ? (image -> palette).R[rgba.R[index]] : rgba.R[index];
         ((image -> image_data).decoded_data)[i + 1] = (image -> is_palette_defined) ? (image -> palette).G[rgba.G[index]] : rgba.G[index];
         ((image -> image_data).decoded_data)[i + 2] = (image -> is_palette_defined) ? (image -> palette).B[rgba.B[index]] : rgba.B[index];
-        if (components == 4) ((image -> image_data).decoded_data)[i + 3] = (image -> is_palette_defined) ? (image -> palette).A[rgba.A[index]] : rgba.A[index];
+        if (components == 4) ((image -> image_data).decoded_data)[i + 3] = rgba.A[index];
     }
 
     free(rgba.R);
