@@ -187,7 +187,6 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
     debug_print(WHITE, "decompressed_data size: %u, limit_size: %u\n", decompressed_data_size, limit_size);
 
     for (unsigned int i = 0; i < limit_size; ++i, ++row) {
-        clean_bits(decompressed_stream);
         unsigned char filter_type = get_next_byte_uc(decompressed_stream);
         unsigned int* size = &((image -> image_data).size);
         (image -> image_data).decoded_data = (unsigned char*) realloc((image -> image_data).decoded_data, sizeof(unsigned char) * ((*size) + row_len));
