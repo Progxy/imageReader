@@ -118,7 +118,6 @@ static void convert_to_RGB(PNGImage* image) {
     unsigned char components = (image -> image_data).components;
     unsigned char* decoded_data = (image -> image_data).decoded_data;
     unsigned int size = (image -> image_data).size;
-    unsigned char bit_depth = image -> bit_depth;
     unsigned int width = (image -> image_data).width;
     unsigned int height = (image -> image_data).height;
     BitStream* bit_stream = allocate_bit_stream(decoded_data, size);
@@ -134,7 +133,7 @@ static void convert_to_RGB(PNGImage* image) {
         unsigned char data = get_next_byte_uc(bit_stream);
         rgba.R[index] = data;
         rgba.G[index] = (image -> is_palette_defined || image -> color_type == GREYSCALE || image -> color_type == GREYSCALE_ALPHA) ? data : get_next_byte_uc(bit_stream);
-        rgba.B[index] = (image -> is_palette_defined || image -> color_type == GREYSCALE || image -> color_type == GREYSCALE_ALPHA) ? data : get_next_n_bits(bit_stream, bit_depth, FALSE);
+        rgba.B[index] = (image -> is_palette_defined || image -> color_type == GREYSCALE || image -> color_type == GREYSCALE_ALPHA) ? data : get_next_byte_uc(bit_stream);
         if (components == 4) rgba.A[index] = get_next_byte_uc(bit_stream);
         if (bit_stream -> error) {
             (image -> image_data).error = DECODING_ERROR;

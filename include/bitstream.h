@@ -64,19 +64,10 @@ unsigned char* get_next_n_byte_uc(BitStream* bit_stream, unsigned int n_byte) {
 }
 
 unsigned char get_next_bit(BitStream* bit_stream, unsigned char reverse_flag) {
-    if (bit_stream -> byte >= bit_stream -> size) {
-        error_print("exceed bitstream length: %d, with: %d\n", bit_stream -> size, bit_stream -> byte);
-        bit_stream -> error = EXCEEDED_LENGTH;
-        return 0;
-    }
-
     if (!reverse_flag) {
-        unsigned char bit_value = (((bit_stream -> stream)[bit_stream -> byte]) & (1 << (7 - bit_stream -> bit))) != 0;
-
-        // Update bit and byte position
-        (bit_stream -> bit)++;
-        (bit_stream -> byte) += (bit_stream -> bit) == 8;
-        (bit_stream -> bit) %= 8;
+        if (bit_stream -> bit == 0) get_next_byte(bit_stream);
+        unsigned char bit_value = (bit_stream -> current_byte >> (7 - bit_stream -> bit)) & 1;
+        (bit_stream -> bit) = ((bit_stream -> bit) + 1) & 7;
         return bit_value;
     }
 
