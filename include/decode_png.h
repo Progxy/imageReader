@@ -3,7 +3,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include "./types.h"
 #include "./debug_print.h"
 #include "./chunk.h"
@@ -400,8 +399,6 @@ void decode_idat(PNGImage* image, Chunk idat_chunk) {
     debug_print(YELLOW, "read: %u, length: %u\n", (image -> bit_stream) -> byte, idat_chunk.length + idat_chunk.pos);
     BitStream* compressed_stream = allocate_bit_stream(compressed_data, idat_chunk.length);
 
-    unsigned int delta_time = time(NULL);
-
     unsigned char err = 0;
     unsigned int stream_length = 0;
     unsigned char* decompressed_stream = inflate(compressed_stream, &err, &stream_length);
@@ -413,19 +410,10 @@ void decode_idat(PNGImage* image, Chunk idat_chunk) {
         return;
     }
 
-    delta_time = time(NULL) - delta_time;
-
-    printf("inflating time: %u seconds\n", delta_time);
-
-    delta_time = time(NULL);
-
     debug_print(YELLOW, "\n");
     debug_print(BLUE, "starting defiltering...\n");
     defilter(image, decompressed_stream, stream_length, image -> bit_depth);
     debug_print(WHITE, "defiltered data len: %u\n", (image -> image_data).size);
-
-    delta_time = time(NULL) - delta_time;
-    printf("defiltering time: %u seconds\n", delta_time);
 
     if (image -> interlace_method) {
         error_print("implement the interlacing Adam 7 method...\n");
@@ -505,10 +493,7 @@ Image decode_png(FileData* image_file) {
 
     debug_print(YELLOW, "\n");
 
-    unsigned int delta_time = time(NULL);
     convert_to_RGB(image);
-    delta_time = time(NULL) - delta_time;
-    printf("conversion time: %u seconds\n", delta_time);
 
     // Deallocate stuff
     deallocate_bit_stream(image -> bit_stream);
