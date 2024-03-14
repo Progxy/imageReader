@@ -36,6 +36,7 @@ const char* months_names[] = {"", "January", "February", "March", "April", "May"
 static bool is_str_equal(unsigned char* str_a, unsigned char* str_b, unsigned int len);
 static bool is_valid_depth_color_combination(unsigned char bit_depth, PNGType color_type);
 static void assign_components_count(PNGImage* image);
+static unsigned char scale_to_8bits(unsigned char original_value, unsigned char bit_depth);
 static void convert_to_RGB(PNGImage* image);
 static int paeth_predictor(unsigned char left, unsigned char above, unsigned char above_left);
 void decode_ihdr(PNGImage* image, Chunk ihdr_chunk);
@@ -115,7 +116,7 @@ static void assign_components_count(PNGImage* image) {
 }
 
 static unsigned char scale_to_8bits(unsigned char original_value, unsigned char bit_depth) {
-    return (original_value * 255) / ((1 << bit_depth) - 1);
+    return CLAMP(roundl((255.0L / ((1 << bit_depth) - 1)) * original_value), 0, 255);
 }
 
 static void convert_to_RGB(PNGImage* image) {
@@ -280,8 +281,8 @@ void decode_ihdr(PNGImage* image, Chunk ihdr_chunk) {
     image -> bit_depth = get_next_byte_uc(image -> bit_stream);
     image -> color_type = get_next_byte_uc(image -> bit_stream);
     
-    debug_print(YELLOW, "bit_depth: %u\n", image -> bit_depth);
-    debug_print(YELLOW, "color_type: %s\n", png_types[image -> color_type]);
+    debug_print(YELLOW, "bit depth: %u\n", image -> bit_depth);
+    debug_print(YELLOW, "color type: %s\n", png_types[image -> color_type]);
 
     if (!is_valid_depth_color_combination(image -> bit_depth, image -> color_type)) {
         error_print("invalid bit depth [%u] and color type [%u] combination\n", image -> bit_depth, image -> color_type);
@@ -302,7 +303,7 @@ void decode_ihdr(PNGImage* image, Chunk ihdr_chunk) {
         return;
     }
     
-    debug_print(YELLOW, "compression_method: %u\n", image -> compression_method);
+    debug_print(YELLOW, "compression method: %u\n", image -> compression_method);
 
     image -> filter_method = get_next_byte_uc(image -> bit_stream);
     if (image -> filter_method) {
@@ -311,7 +312,7 @@ void decode_ihdr(PNGImage* image, Chunk ihdr_chunk) {
         return;
     }
 
-    debug_print(YELLOW, "filter_method: %u\n", image -> filter_method);
+    debug_print(YELLOW, "filter method: %u\n", image -> filter_method);
 
     image -> interlace_method = get_next_byte_uc(image -> bit_stream);
     if (image -> interlace_method > 1) {
@@ -320,7 +321,7 @@ void decode_ihdr(PNGImage* image, Chunk ihdr_chunk) {
         return;
     }
 
-    debug_print(YELLOW, "interlace_method: %u\n\n", image -> interlace_method);
+    debug_print(YELLOW, "interlace method: %u\n\n", image -> interlace_method);
 
     return;
 }

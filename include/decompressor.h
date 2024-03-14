@@ -223,10 +223,10 @@ static char* read_zlib_header(BitStream* bit_stream) {
     unsigned char preset_dictionary = ((zlib_flags & 0x20) >> 5) & 0x01;
     unsigned char compression_level = ((zlib_flags & 0xC0) >> 6) & 0x03;
 
-    debug_print(YELLOW, "compression_method: %u\n", compression_method);
-    debug_print(YELLOW, "window_size: %u\n", window_size);
-    debug_print(YELLOW, "preset_dictionary: %u\n", preset_dictionary);
-    debug_print(YELLOW, "compression_level: %u\n", compression_level);
+    debug_print(YELLOW, "compression method: %u\n", compression_method);
+    debug_print(YELLOW, "window size: %u\n", window_size);
+    debug_print(YELLOW, "preset dictionary: %u\n", preset_dictionary);
+    debug_print(YELLOW, "compression level: %u\n", compression_level);
     
     if (compression_method != 8) {
         return ("invalid compression method");
