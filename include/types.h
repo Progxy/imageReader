@@ -131,11 +131,18 @@ typedef struct Chunks {
 } Chunks;
 
 typedef struct DynamicHF {
-    unsigned short int* codes;
+    unsigned short int** values;
+    unsigned short int* min_codes;
+    unsigned short int* max_codes;
     unsigned char* lengths;
     unsigned short int size;
     unsigned char bit_length;
 } DynamicHF; 
+
+typedef struct SlidingWindow {
+    unsigned char* window;
+    unsigned short int out_pos;
+} SlidingWindow;
 
 typedef struct PNGImage {
     Image image_data;

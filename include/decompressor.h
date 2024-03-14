@@ -17,11 +17,6 @@ const unsigned short int fixed_distance_val_ptr[] = {0x00};
 const unsigned short int fixed_distance_mins[] = {0x00};
 const unsigned short int fixed_distance_maxs[] = {0x1F};
 
-typedef struct SlidingWindow {
-    unsigned char* window;
-    unsigned short int out_pos;
-} SlidingWindow;
-
 /* ---------------------------------------------------------------------------------------------------------- */
 
 static void deallocate_dynamic_hf(DynamicHF* hf);
@@ -43,7 +38,12 @@ unsigned char* inflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
 
 static void deallocate_dynamic_hf(DynamicHF* hf) {
     debug_print(CYAN, "deallocating dynamic hf...\n");
-    free(hf -> codes);
+    for (unsigned char i = 1; i <= hf -> bit_length; ++i) {
+        free((hf -> values)[i]);
+    }
+    free(hf -> values);
+    free(hf -> min_codes);
+    free(hf -> max_codes);
     free(hf -> lengths);
     hf -> bit_length = 0;
     hf -> size = 0;
@@ -66,21 +66,32 @@ static void generate_codes(DynamicHF* hf) {
     }
 
     bl_count[0] = 0;
-    unsigned short int* next_code = (unsigned short int*) calloc((hf -> bit_length) + 1, sizeof(unsigned short int));
-    for (unsigned char bits = 1; bits <= hf -> bit_length; ++bits) {
-        next_code[bits] = (next_code[bits - 1] + bl_count[bits - 1]) << 1;
+
+    hf -> values = (unsigned short int**) calloc((hf -> bit_length) + 1, sizeof(unsigned short int*));
+    for (unsigned char i = 1; i <= hf -> bit_length; ++i) {
+        (hf -> values)[i] = (unsigned short int*) calloc(bl_count[i], sizeof(unsigned short int));
     }
+
+    hf -> min_codes = (unsigned short int*) calloc((hf -> bit_length) + 1, sizeof(unsigned short int));
+    hf -> max_codes = (unsigned short int*) calloc((hf -> bit_length) + 1, sizeof(unsigned short int));
+
+    for (unsigned char bits = 1; bits <= hf -> bit_length; ++bits) {
+        (hf -> max_codes)[bits] = ((hf -> max_codes)[bits - 1] + bl_count[bits - 1]) << 1;
+        (hf -> min_codes)[bits] = (hf -> max_codes)[bits];
+    }
+    
     free(bl_count);
     
-    hf -> codes = (unsigned short int*) calloc(hf -> size, sizeof(unsigned short int));
+    unsigned char* values_index = (unsigned char*) calloc((hf -> bit_length) + 1, sizeof(unsigned char));
     for (unsigned short int i = 0; i < hf -> size; ++i) {
         if ((hf -> lengths)[i] != 0) {
-            (hf -> codes)[i] = next_code[(hf -> lengths)[i]]++;
-            /*remove superfluous bits from the code*/
-            (hf -> codes)[i] &= ((1 << (hf -> lengths)[i]) - 1);
+            unsigned char value_bit_len = (hf -> lengths)[i];
+            ((hf -> max_codes)[value_bit_len])++;
+            (hf -> values)[value_bit_len][values_index[value_bit_len]++] = i;
         }
     }
-    free(next_code);
+
+    free(values_index);
 
     return;
 }
@@ -105,21 +116,14 @@ static unsigned short int decode_hf_fixed(BitStream* bit_stream, unsigned short 
 
 static unsigned short int decode_hf(BitStream* bit_stream, unsigned short int code, DynamicHF hf) {
     for (unsigned char i = 1; i <= hf.bit_length; ++i) {
-        for (unsigned short int j = 0; j < hf.size; ++j) {
-            if ((hf.lengths[j] == i) && (code == hf.codes[j])) {
-                return j;
-            }
+        if (hf.max_codes[i] > code) {
+            return hf.values[i][code - hf.min_codes[i]];
         }
         code = (code << 1) + get_next_bit(bit_stream, TRUE);
     }
     
     debug_print(RED, "\n");
     debug_print(RED, "probably invalid huffman tree, bit_length: %u, size: %u: \n", hf.bit_length, hf.size);
-    for (unsigned short int i = 0; i < hf.size; ++i) {
-        debug_print(CYAN, "%u: length: %u, code: %u -", i, (hf.lengths)[i], (hf.codes)[i]);
-        print_bits(CYAN, (hf.codes)[i], (hf.lengths)[i] ? (hf.lengths)[i] : 1);
-        debug_print(CYAN, "\n");
-    }
 
     return 0xFFFF;
 }
