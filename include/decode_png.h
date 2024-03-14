@@ -36,7 +36,7 @@ const char* months_names[] = {"", "January", "February", "March", "April", "May"
 static bool is_str_equal(unsigned char* str_a, unsigned char* str_b, unsigned int len);
 static bool is_valid_depth_color_combination(unsigned char bit_depth, PNGType color_type);
 static void assign_components_count(PNGImage* image);
-static unsigned char scale_to_8bits(unsigned char original_value, unsigned char bit_depth);
+static unsigned char scale_to_8bits(unsigned char original_value, unsigned char bit_depth, unsigned char color_type);
 static void convert_to_RGB(PNGImage* image);
 static int paeth_predictor(unsigned char left, unsigned char above, unsigned char above_left);
 void decode_ihdr(PNGImage* image, Chunk ihdr_chunk);
@@ -117,8 +117,8 @@ static void assign_components_count(PNGImage* image) {
 
 const unsigned char depth_scale_table[9] = { 0, 0xff, 0x55, 0, 0x11, 0,0,0, 0x01 };
 
-static unsigned char scale_to_8bits(unsigned char original_value, unsigned char bit_depth) {
-    return CLAMP(depth_scale_table[bit_depth] * original_value, 0, 255);
+static unsigned char scale_to_8bits(unsigned char original_value, unsigned char bit_depth, unsigned char color_type) {
+    return CLAMP(((color_type == GREYSCALE || color_type == GREYSCALE_ALPHA) ? depth_scale_table[bit_depth] : 1) * original_value, 0, 255);
 }
 
 static void convert_to_RGB(PNGImage* image) {
@@ -126,6 +126,7 @@ static void convert_to_RGB(PNGImage* image) {
     unsigned char* decoded_data = (image -> image_data).decoded_data;
     unsigned int size = (image -> image_data).size;
     unsigned char bit_depth = image -> bit_depth;
+    unsigned char color_type = image -> color_type;
     unsigned int width = (image -> image_data).width;
     unsigned int height = (image -> image_data).height;
     BitStream* bit_stream = allocate_bit_stream(decoded_data, size);
@@ -138,11 +139,11 @@ static void convert_to_RGB(PNGImage* image) {
     if (components == 4) rgba.A = (unsigned char*) calloc(new_size, sizeof(unsigned char));
 
     for (unsigned int index = 0; index < new_size; ++index) {
-        unsigned char data = scale_to_8bits(get_next_n_bits(bit_stream, bit_depth, FALSE), bit_depth);
+        unsigned char data = scale_to_8bits(get_next_n_bits(bit_stream, bit_depth, FALSE), bit_depth, color_type);
         rgba.R[index] = data;
-        rgba.G[index] = (image -> is_palette_defined || image -> color_type == GREYSCALE || image -> color_type == GREYSCALE_ALPHA) ? data : scale_to_8bits(get_next_n_bits(bit_stream, bit_depth, FALSE), bit_depth);
-        rgba.B[index] = (image -> is_palette_defined || image -> color_type == GREYSCALE || image -> color_type == GREYSCALE_ALPHA) ? data : scale_to_8bits(get_next_n_bits(bit_stream, bit_depth, FALSE), bit_depth);
-        if (components == 4) rgba.A[index] = scale_to_8bits(get_next_n_bits(bit_stream, bit_depth, FALSE), bit_depth);
+        rgba.G[index] = (image -> is_palette_defined || color_type == GREYSCALE || color_type == GREYSCALE_ALPHA) ? data : scale_to_8bits(get_next_n_bits(bit_stream, bit_depth, FALSE), bit_depth, color_type);
+        rgba.B[index] = (image -> is_palette_defined || color_type == GREYSCALE || color_type == GREYSCALE_ALPHA) ? data : scale_to_8bits(get_next_n_bits(bit_stream, bit_depth, FALSE), bit_depth, color_type);
+        if (components == 4) rgba.A[index] = scale_to_8bits(get_next_n_bits(bit_stream, bit_depth, FALSE), bit_depth, color_type);
         if (bit_stream -> error) {
             (image -> image_data).error = DECODING_ERROR;
             return;
@@ -181,8 +182,7 @@ static int paeth_predictor(unsigned char left, unsigned char above, unsigned cha
 
 static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned int decompressed_data_size, unsigned char bit_depth) {
     unsigned char interval = image -> filter_interval;
-    //unsigned int img_width_bytes = (bit_depth < 8) ? (((interval * (image -> image_data).width * bit_depth) + 7) >> 3) : (image -> image_data).width;
-    unsigned int filtered_img_width = (image -> image_data).width / (8 / bit_depth);
+    unsigned int filtered_img_width = ceill((image -> image_data).width / (8.0L / bit_depth));
     unsigned int row_len = filtered_img_width * interval;
     unsigned int row = 0;
 
@@ -194,7 +194,7 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
 
     BitStream* decompressed_stream = allocate_bit_stream(decompressed_data, decompressed_data_size);
     const unsigned short int bit_mask = 0xFF;
-    debug_print(WHITE, "decompressed_data size: %u, img_width_bytes: %u\n", decompressed_data_size, filtered_img_width);
+    debug_print(WHITE, "decompressed_data size: %u, filtered_img_width: %u\n", decompressed_data_size, filtered_img_width);
 
     for (unsigned int i = 0; i < decompressed_data_size; ++i, ++row) {
         unsigned char filter_type = get_next_byte_uc(decompressed_stream);
