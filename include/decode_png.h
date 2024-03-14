@@ -118,6 +118,7 @@ static void assign_components_count(PNGImage* image) {
 const unsigned char depth_scale_table[9] = { 0, 0xff, 0x55, 0, 0x11, 0,0,0, 0x01 };
 
 static unsigned char scale_to_8bits(unsigned char original_value, unsigned char bit_depth, unsigned char color_type) {
+    if (original_value > ((1 << bit_depth) - 1)) debug_print(YELLOW, "invalid original_value: %u\n", original_value);
     return CLAMP(((color_type == GREYSCALE || color_type == GREYSCALE_ALPHA) ? depth_scale_table[bit_depth] : 1) * original_value, 0, 255);
 }
 
@@ -138,16 +139,22 @@ static void convert_to_RGB(PNGImage* image) {
     rgba.B = (unsigned char*) calloc(new_size, sizeof(unsigned char));
     if (components == 4) rgba.A = (unsigned char*) calloc(new_size, sizeof(unsigned char));
 
-    for (unsigned int index = 0; index < new_size; ++index) {
-        unsigned char data = scale_to_8bits(get_next_n_bits(bit_stream, bit_depth, FALSE), bit_depth, color_type);
-        rgba.R[index] = data;
-        rgba.G[index] = (image -> is_palette_defined || color_type == GREYSCALE || color_type == GREYSCALE_ALPHA) ? data : scale_to_8bits(get_next_n_bits(bit_stream, bit_depth, FALSE), bit_depth, color_type);
-        rgba.B[index] = (image -> is_palette_defined || color_type == GREYSCALE || color_type == GREYSCALE_ALPHA) ? data : scale_to_8bits(get_next_n_bits(bit_stream, bit_depth, FALSE), bit_depth, color_type);
-        if (components == 4) rgba.A[index] = scale_to_8bits(get_next_n_bits(bit_stream, bit_depth, FALSE), bit_depth, color_type);
-        if (bit_stream -> error) {
-            (image -> image_data).error = DECODING_ERROR;
-            return;
+    unsigned int bit_offset = image -> filter_interval * ((ceill(width / (8.0L / bit_depth)) * 8) - (width * bit_depth));
+    debug_print(WHITE, "bit offset: %u\n", bit_offset);
+
+    for (unsigned int index = 0, y = 0; y < height; ++y) {
+        for (unsigned int x = 0; x < width; ++x, ++index) {
+            unsigned char data = scale_to_8bits(get_next_n_bits(bit_stream, bit_depth, FALSE), bit_depth, color_type);
+            rgba.R[index] = data;
+            rgba.G[index] = (image -> is_palette_defined || color_type == GREYSCALE || color_type == GREYSCALE_ALPHA) ? data : scale_to_8bits(get_next_n_bits(bit_stream, bit_depth, FALSE), bit_depth, color_type);
+            rgba.B[index] = (image -> is_palette_defined || color_type == GREYSCALE || color_type == GREYSCALE_ALPHA) ? data : scale_to_8bits(get_next_n_bits(bit_stream, bit_depth, FALSE), bit_depth, color_type);
+            if (components == 4) rgba.A[index] = scale_to_8bits(get_next_n_bits(bit_stream, bit_depth, FALSE), bit_depth, color_type);
+            if (bit_stream -> error) {
+                (image -> image_data).error = DECODING_ERROR;
+                return;
+            }
         }
+        get_next_n_bits(bit_stream, bit_offset, FALSE);
     }
 
     deallocate_bit_stream(bit_stream);
