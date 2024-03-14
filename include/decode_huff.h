@@ -12,8 +12,6 @@
 #define AC 1
 #define CHECK_ERRORS(err) if (*err) return 0
 
-typedef enum DecodeFlag {INVALID_BYTE_STUFFING = 0x0100, DNL_MARKER_DETECTED, LENGTH_EXCEEDED} DecodeFlag;
-
 unsigned char next_bit(BitStream* bit_stream, unsigned short int* err) {
     unsigned char cnt = bit_stream -> bit;
     unsigned char b = bit_stream -> current_byte;
