@@ -16,11 +16,22 @@ void error_print(const char* format, ...) {
     return;
 }
 
+void warning_print(const char* format, ...) {
+    SET_COLOR(YELLOW);
+    printf("WARNING: ");
+    va_list args;
+    va_start (args, format);
+    vprintf (format, args);
+    va_end (args);
+    RESET_COLOR();
+    return;
+}
+
 #ifdef _DEBUG_MODE_ 
 
 static const char hex_values[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
-void print_hex(Colors color, unsigned char val) {\
+void print_hex(Colors color, unsigned char val) {
     SET_COLOR(color);
     printf("%c%c ", hex_values[(val >> 4) & 15], hex_values[val & 15]);
     RESET_COLOR();
@@ -88,17 +99,6 @@ void debug_print(Colors color, const char* format, ...) {
     return;
 }
 
-void warning_print(const char* format, ...) {
-    SET_COLOR(YELLOW);
-    printf("WARNING: ");
-    va_list args;
-    va_start (args, format);
-    vprintf (format, args);
-    va_end (args);
-    RESET_COLOR();
-    return;
-}
-
 #else
 
 void print_hex(Colors /*color*/, unsigned char /*val*/) {
@@ -115,10 +115,6 @@ void print_table(Colors /*color*/, unsigned char* /*table*/) {
 }
 
 void debug_print(Colors /*color*/, const char* /*format*/, ...) {
-    return;
-}
-
-void warning_print(const char* /*format*/, ...) {
     return;
 }
 
