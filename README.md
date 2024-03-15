@@ -1,4 +1,4 @@
-# Image decoding library (IDL)
+# IDL: Image Decoding Library
 
 Image file types supported on reading mode: 
 - JPEG: baseline;
@@ -12,5 +12,8 @@ NOTE: to understand how to use this library use as a reference the example in `i
 NOTE: the library is OS independent.
 
 ## Compile using the library as a shared library
-When compiling using the IDL as a shared library remember to add the following flags to include it: `L. -lidl`
-Also remember to add the path to the library to the LD_LIBRARY_PATH on Linux
+Compile using the `idl` option with makefile
+
+When compiling using `IDL` as a shared library remember to add the following flags to include it: `L. -lidl`
+
+NOTE: remember to add the path to the library to the `LD_LIBRARY_PATH` variable on Linux
