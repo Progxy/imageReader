@@ -3,6 +3,7 @@
 #include <gtk/gtk.h>
 #undef FALSE // Prevent redifinition
 #undef TRUE  // Prevent redifinition
+#define _NO_LIBRARY_ // Use directly the library for this example
 #include "./include/image_io.h"
 
 static gboolean on_draw_event(GtkWidget *widget, cairo_t *cr, gpointer user_data) {

@@ -10,3 +10,7 @@ Supports only PPM file type on writing mode.
 NOTE: to understand how to use this library use as a reference the example in `image.c`, where is implemented a simple image viewer (for LINUX) using `gtk`.
 
 NOTE: the library is OS independent.
+
+## Compile using the library as a shared library
+When compiling using the IDL as a shared library remember to add the following flags to include it: `L. -lidl`
+Also remember to add the path to the library to the LD_LIBRARY_PATH on Linux

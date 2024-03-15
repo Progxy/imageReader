@@ -9,6 +9,15 @@
 #include "./decode_png.h"
 #include "./decode_ppm.h"
 
+Image decode_image(const char* file_path);
+bool create_ppm_image(Image image, const char* filename);
+
+#ifdef _NO_LIBRARY_
+#define _IMAGE_IO_IMPLEMENTATION_
+#endif //_NO_LIBRARY_
+
+#ifdef _IMAGE_IO_IMPLEMENTATION_
+
 #define CHECK_JPEG(data) ((data)[0] == 0xFF && (data)[1] == 0xD8)
 
 static const unsigned char png_magic_numbers[] = {0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
@@ -88,6 +97,10 @@ static bool read_image_file(FileData* image_file, const char* filename) {
     return NO_ERROR;
 }
 
+#endif //_IMAGE_IO_IMPLEMENTATION_
+
+#ifdef _NO_LIBRARY_
+
 Image decode_image(const char* file_path) {
     Image image = {0};
 
@@ -166,5 +179,7 @@ bool create_ppm_image(Image image, const char* filename) {
 
     return NO_ERROR;
 }
+
+#endif //_NO_LIBRARY
 
 #endif //_IMAGE_IO_H_

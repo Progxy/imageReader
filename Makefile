@@ -10,4 +10,4 @@ image: image.c
 
 # Compile as a shared library to use with the definitions contained in idl.h
 idl: 
-	gcc $(FLAGS) -fPIC ./include/*.h -shared -o out/libidl.so
+	gcc $(FLAGS) -fPIC ./include/image_io.c -shared -o out/libidl.so
