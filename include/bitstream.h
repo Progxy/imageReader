@@ -151,4 +151,19 @@ char* get_str(BitStream* bit_stream, unsigned char* str_terminators, unsigned in
     return str;
 }
 
+void append_n_bytes(BitStream* bit_stream, unsigned char* data, unsigned int length) {
+    unsigned int old_size = bit_stream -> size;
+    (bit_stream -> size) += length;
+    bit_stream -> stream = (unsigned char*) realloc(bit_stream -> stream, sizeof(unsigned char) * (bit_stream -> size));
+    
+    for (unsigned int i = 0; i < length; ++i) {
+        (bit_stream -> stream)[old_size + i] = data[i];
+    }
+
+    free(data);
+
+    debug_print(WHITE, "successfully appended %u bytes, new size: %u\n", length, bit_stream -> size);
+    return;
+}
+
 #endif //_BIT_STREAM_H_

@@ -391,19 +391,30 @@ void decode_idat(PNGImage* image, Chunk idat_chunk) {
         return;
     }
 
-    // Check that there's no other IDAT chunks before this one
     set_byte(image -> bit_stream, idat_chunk.pos);
-    debug_print(BLUE, "init deflating...\n");
 
-    unsigned char* compressed_data = get_next_n_byte_uc(image -> bit_stream, idat_chunk.length);
-    debug_print(YELLOW, "\n");
-    debug_print(YELLOW, "read: %u, length: %u\n", (image -> bit_stream) -> byte, idat_chunk.length + idat_chunk.pos);
-    BitStream* compressed_stream = allocate_bit_stream(compressed_data, idat_chunk.length);
+    // Check that there's no other IDAT chunks before this one
+    if (image -> idat_chunk_count >= image -> current_idat_chunk) {
+        debug_print(YELLOW, "idat_chunk: %u of %u\n", image -> current_idat_chunk, image -> idat_chunk_count);
+        
+        unsigned char* compressed_data = get_next_n_byte_uc(image -> bit_stream, idat_chunk.length);
+        debug_print(YELLOW, "read: %u, length: %u\n", (image -> bit_stream) -> byte, idat_chunk.length + idat_chunk.pos);
+
+        // append the current block data to the compressed stream
+        if (image -> current_idat_chunk == 0) image -> compressed_stream = allocate_bit_stream(compressed_data, idat_chunk.length);
+        else append_n_bytes(image -> compressed_stream, compressed_data, idat_chunk.length);
+        
+        (image -> current_idat_chunk)++;
+        
+        if (image -> idat_chunk_count >= image -> current_idat_chunk) return;
+    }
+
+    debug_print(BLUE, "init deflating...\n");
 
     unsigned char err = 0;
     unsigned int stream_length = 0;
-    unsigned char* decompressed_stream = inflate(compressed_stream, &err, &stream_length);
-    deallocate_bit_stream(compressed_stream);
+    unsigned char* decompressed_stream = inflate(image -> compressed_stream, &err, &stream_length);
+    deallocate_bit_stream(image -> compressed_stream);
     
     if (err) {
         error_print((char*) decompressed_stream);
@@ -456,8 +467,9 @@ void decode_time(PNGImage* image, Chunk time_chunk) {
 }
 
 Image decode_png(FileData* image_file) {
-    Chunks chunks = find_and_check_chunks(image_file -> data, image_file -> length);
     PNGImage* image = (PNGImage*) calloc(1, sizeof(PNGImage));
+    image -> idat_chunk_count = 0;
+    Chunks chunks = find_and_check_chunks(image_file -> data, image_file -> length, &(image -> idat_chunk_count));
     image -> bit_stream = allocate_bit_stream(image_file -> data, image_file -> length);
     image -> palette = (RGBA) { .R = NULL, .G = NULL, .B = NULL, .A = NULL };
     image -> is_palette_defined = FALSE;

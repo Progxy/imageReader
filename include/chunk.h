@@ -36,12 +36,12 @@ static unsigned int* generate_crc_table() {
     return crc_table;
 }
 
-Chunks find_and_check_chunks(unsigned char* file_data, unsigned int file_length) {
+Chunks find_and_check_chunks(unsigned char* file_data, unsigned int file_length, unsigned int* idat_chunks_count) {
     Chunks chunks = (Chunks) {.chunks = NULL, .chunks_count = 0, .invalid_chunks = 0};
     chunks.chunks = (Chunk*) calloc(1, sizeof(Chunk));
     BitStream* bit_stream = allocate_bit_stream(file_data, file_length);
     unsigned int* crc_table = generate_crc_table();
-    
+
     // Skip the PNG magic number
     set_byte(bit_stream, 8);
 
@@ -52,6 +52,10 @@ Chunks find_and_check_chunks(unsigned char* file_data, unsigned int file_length)
         chunk.chunk_type[4] = '\0';
         for (unsigned char j = 0; j < 4; ++j) {
             chunk.chunk_type[j] = get_next_byte_uc(bit_stream);
+        }
+
+        if (!strcmp((char*) chunk.chunk_type, "IDAT")) {
+            (*idat_chunks_count)++;
         }
 
         chunk.pos = bit_stream -> byte;

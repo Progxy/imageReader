@@ -156,6 +156,9 @@ typedef struct PNGImage {
     RGB palette;
     unsigned char filter_interval;
     bool is_palette_defined;
+    unsigned int idat_chunk_count;
+    unsigned int current_idat_chunk;
+    BitStream* compressed_stream;
 } PNGImage;
 
 typedef struct PPMImage {

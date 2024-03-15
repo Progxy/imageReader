@@ -121,6 +121,10 @@ static unsigned short int decode_hf(BitStream* bit_stream, unsigned short int co
             return hf.values[i][code - hf.min_codes[i]];
         }
         code = (code << 1) + get_next_bit(bit_stream, TRUE);
+
+        if (bit_stream -> error) {
+            break;
+        }
     }
     
     debug_print(RED, "\n");
