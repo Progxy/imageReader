@@ -406,7 +406,7 @@ void decode_idat(PNGImage* image, Chunk idat_chunk) {
         
         (image -> current_idat_chunk)++;
         
-        if (image -> idat_chunk_count >= image -> current_idat_chunk) return;
+        if (image -> idat_chunk_count > image -> current_idat_chunk) return;
     }
 
     debug_print(BLUE, "init deflating...\n");

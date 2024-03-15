@@ -63,14 +63,14 @@ int main(int argc, char** argv) {
 
     if (image.error) {
         image.error = CLAMP(image.error, 0, sizeof(err_codes) / sizeof(err_codes[0]));
-        printf("terminate the program with the error code: %s\n", err_codes[image.error]);
+        error_print("terminate the program with the error code: %s\n", err_codes[image.error]);
         return (image.error);
     }
 
     draw_image(file_name, &image);
 
     if ((status = create_ppm_image(image, "./out/new_image.ppm"))) {
-        printf("terminate the program with the error code: %s\n", err_codes[status]);
+        error_print("terminate the program with the error code: %s\n", err_codes[status]);
         return status;
     }
 
