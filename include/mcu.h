@@ -5,9 +5,9 @@
 #include <stdlib.h>
 #include <math.h>
 #include "./types.h"
+#include "./debug_print.h"
 #include "./dct.h"
 
-#define CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 #define COMPUTE_IDCT(data_unit, t_m, m) mul_mat(data_unit, t_m, m, 8)
 #define PI 3.14159265358979323846L 
 #define SQRT2 1.4142135623730951L

@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "./types.h"
-#include "./image_io.h"
 #include "./markers.h"
 #include "./debug_print.h"
 #include "./bitstream.h"

@@ -1,4 +1,4 @@
-# Image decoding library
+# Image decoding library (IDL)
 
 Image file types supported on reading mode: 
 - JPEG: baseline;

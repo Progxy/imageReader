@@ -52,7 +52,7 @@ void draw_image(char* filename, Image* image) {
 
 int main(int argc, char** argv) {
     if (argc != 2) {
-        error_print("Invalid command syntax: image 'src_img.jpg'\n");
+        printf("Invalid command syntax: image 'src_img.jpg'\n");
         return -1;
     }
 
@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
     bool status;
     
     if ((status = read_image_file(image_file, file_name))) {
-        error_print("terminate the program with the error code: %s\n", err_codes[status]);
+        printf("terminate the program with the error code: %s\n", err_codes[status]);
         return status;
     }
 
@@ -69,14 +69,14 @@ int main(int argc, char** argv) {
 
     if (image.error) {
         image.error = CLAMP(image.error, 0, sizeof(err_codes) / sizeof(err_codes[0]));
-        error_print("terminate the program with the error code: %s\n", err_codes[image.error]);
+        printf("terminate the program with the error code: %s\n", err_codes[image.error]);
         return (image.error);
     }
 
     draw_image(file_name, &image);
 
     if ((status = create_ppm_image(image, "./out/new_image.ppm"))) {
-        error_print("terminate the program with the error code: %s\n", err_codes[status]);
+        printf("terminate the program with the error code: %s\n", err_codes[status]);
         return status;
     }
 

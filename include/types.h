@@ -163,6 +163,7 @@ typedef struct PPMImage {
     BitStream* bit_stream;
 } PPMImage;
 
+#define CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 #define SET_COLOR(color) printf("\033[%d;1m", color)
 #define RESET_COLOR() printf("\033[0m")
 #define FALSE 0

@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "./types.h"
 #include "./debug_print.h"
+#include "./bitstream.h"
 
 #define SLIDING_WINDOW_SIZE 0x8000
 #define SLIDING_WINDOW_MASK 0x7FFF
