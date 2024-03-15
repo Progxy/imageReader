@@ -79,3 +79,9 @@ bool create_ppm_image(Image image, const char* filename) {
 
     return NO_ERROR;
 }
+
+void deallocate_image(Image image) {
+    debug_print(BLUE, "deallocating image...\n");
+    free(image.decoded_data);
+    return;
+}

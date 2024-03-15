@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+
 #ifndef _USE_IMAGE_LIBRARY_
 #include "./debug_print.h"
 #include "./types.h"
@@ -36,6 +37,7 @@ typedef struct Image {
 
 Image decode_image(const char* file_path);
 bool create_ppm_image(Image image, const char* filename);
+void deallocate_image(Image image);
 
 #ifdef _NO_LIBRARY_
 #define _IMAGE_IO_IMPLEMENTATION_
@@ -203,6 +205,12 @@ bool create_ppm_image(Image image, const char* filename) {
     debug_print(GREEN, "copied %u bytes out of the expected %u\n\n", b_w, image.components * image.width * image.height);
 
     return NO_ERROR;
+}
+
+void deallocate_image(Image image) {
+    debug_print(BLUE, "deallocating image...\n");
+    free(image.decoded_data);
+    return;
 }
 
 #endif //_NO_LIBRARY
