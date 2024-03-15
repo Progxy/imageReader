@@ -9,6 +9,28 @@
 #include "./decode_png.h"
 #include "./decode_ppm.h"
 
+#ifdef _USE_IMAGE_LIBRARY_
+
+typedef enum FileType {JPEG, PNG, PPM} FileType;
+typedef unsigned char bool;
+
+typedef struct FileData {
+    unsigned int length;
+    unsigned char* data;
+    FileType file_type;
+} FileData;
+
+typedef struct Image {
+    unsigned int width;
+    unsigned int height;
+    unsigned char* decoded_data;
+    unsigned int size;
+    unsigned char components;
+    ImageError error;
+} Image;
+
+#endif //_USE_IMAGE_LIBRARY_
+
 Image decode_image(const char* file_path);
 bool create_ppm_image(Image image, const char* filename);
 
