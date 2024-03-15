@@ -3,14 +3,17 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#ifndef _USE_IMAGE_LIBRARY_
 #include "./debug_print.h"
 #include "./types.h"
 #include "./decode_jpeg.h"
 #include "./decode_png.h"
 #include "./decode_ppm.h"
+#endif //_USE_IMAGE_LIBRARY_
 
 #ifdef _USE_IMAGE_LIBRARY_
 
+typedef enum ImageError {NO_ERROR, FILE_NOT_FOUND, INVALID_FILE_TYPE, FILE_ERROR, INVALID_MARKER_LENGTH, INVALID_QUANTIZATION_TABLE_NUM, INVALID_HUFFMAN_TABLE_NUM, INVALID_IMAGE_SIZE, EXCEEDED_LENGTH, UNSUPPORTED_JPEG_TYPE, INVALID_DEPTH_COLOR_COMBINATION, INVALID_CHUNK_LENGTH, INVALID_COMPRESSION_METHOD, INVALID_FILTER_METHOD, INVALID_INTERLACE_METHOD, INVALID_IEND_CHUNK_SIZE, DECODING_ERROR} ImageError; 
 typedef enum FileType {JPEG, PNG, PPM} FileType;
 typedef unsigned char bool;
 
