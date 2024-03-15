@@ -43,19 +43,14 @@ static bool check_image_file(FileData* image_file) {
     return FALSE;
 }
 
-Image decode_image(FileData* image_file) {
-    Image image = {};
-    if (image_file -> file_type == JPEG) {
-        image = decode_jpeg(image_file);
-    } else if (image_file -> file_type == PNG) {
-        image = decode_png(image_file);
-    } else if (image_file -> file_type == PPM) {
-        image = decode_ppm(image_file);
-    }
-    return image;
+static void deallocate_file_data(FileData* image_file, bool deallocate_data) {
+    debug_print(BLUE, "deallocating file data...\n");
+    if (deallocate_data) free(image_file -> data);
+    free(image_file);
+    return;
 }
 
-bool read_image_file(FileData* image_file, const char* filename) {
+static bool read_image_file(FileData* image_file, const char* filename) {
     FILE* file = fopen(filename, "rb");
 
     // Check for errors while opening the file
@@ -91,6 +86,31 @@ bool read_image_file(FileData* image_file, const char* filename) {
     debug_print(GREEN, "The current image file is valid %s image!\n\n", file_types[image_file -> file_type]);
 
     return NO_ERROR;
+}
+
+Image decode_image(const char* file_path) {
+    Image image = {0};
+
+    // Read the given file
+    bool status = 0;
+    FileData* image_file = (FileData*) calloc(1, sizeof(FileData));
+    if ((status = read_image_file(image_file, file_path))) {
+        image.error = status;
+        deallocate_file_data(image_file, TRUE);
+        return image;
+    }
+
+    if (image_file -> file_type == JPEG) {
+        image = decode_jpeg(image_file);
+    } else if (image_file -> file_type == PNG) {
+        image = decode_png(image_file);
+    } else if (image_file -> file_type == PPM) {
+        image = decode_ppm(image_file);
+    }
+
+    deallocate_file_data(image_file, FALSE);
+
+    return image;
 }
 
 bool create_ppm_image(Image image, const char* filename) {

@@ -56,16 +56,9 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    char* file_name = argv[1];
-    FileData* image_file = (FileData*) calloc(1, sizeof(FileData));
     bool status;
-    
-    if ((status = read_image_file(image_file, file_name))) {
-        printf("terminate the program with the error code: %s\n", err_codes[status]);
-        return status;
-    }
-
-    Image image = decode_image(image_file);
+    char* file_name = argv[1];
+    Image image = decode_image(file_name);
 
     if (image.error) {
         image.error = CLAMP(image.error, 0, sizeof(err_codes) / sizeof(err_codes[0]));
