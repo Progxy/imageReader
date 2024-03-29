@@ -12,7 +12,7 @@ const char str_terminators[] = {' ', '\0', '\t', '\r', '\n'};
 
 Image decode_ppm(FileData* image_file) {
     PPMImage* image = (PPMImage*) calloc(1, sizeof(PPMImage));
-    image -> bit_stream = allocate_bit_stream(image_file -> data, image_file -> length); 
+    image -> bit_stream = allocate_bit_stream(image_file -> data, image_file -> length, FALSE); 
     (image -> image_data).size = 0;
     (image -> image_data).components = 3;
 

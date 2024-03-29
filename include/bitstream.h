@@ -3,13 +3,19 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "./debug_print.h"
 #include "./types.h"
 
-BitStream* allocate_bit_stream(unsigned char* data_stream, unsigned int size) {
+BitStream* allocate_bit_stream(unsigned char* data_stream, unsigned int size, bool copy_flag) {
     BitStream* bit_stream = (BitStream*) calloc(1, sizeof(BitStream));
-
-    bit_stream -> stream = data_stream;
+    if (copy_flag) {
+        unsigned char* new_data_stream = (unsigned char*) calloc(size, sizeof(unsigned char));
+        for (unsigned int i = 0; i < size; ++i) {
+            new_data_stream[i] = data_stream[i];
+        }
+        bit_stream -> stream = new_data_stream;
+    } else bit_stream -> stream = data_stream;
     bit_stream -> bit = 0;
     bit_stream -> byte = 0;
     bit_stream -> size = size;
@@ -136,6 +142,22 @@ static bool is_contained(unsigned char val, unsigned char* container, unsigned i
     return FALSE;
 }
 
+bool contains(unsigned char* values, unsigned int values_len, unsigned char* container, unsigned int container_len) {
+    for (unsigned int i = 0; i < values_len; ++i) {
+        if (is_contained(values[i], container, container_len)) {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+unsigned int get_symbol_pos(char* str, unsigned char symbol, unsigned int pos) {
+    while ((str[pos] != symbol) && (pos < strlen(str))) {
+        pos++;
+    }
+    return pos;
+}
+
 char* get_str(BitStream* bit_stream, unsigned char* str_terminators, unsigned int terminators_num) {
     char* str = (char*) calloc(1, sizeof(char));
     unsigned int index = 0;
@@ -164,6 +186,33 @@ void append_n_bytes(BitStream* bit_stream, unsigned char* data, unsigned int len
 
     debug_print(WHITE, "successfully appended %u bytes, new size: %u\n", length, bit_stream -> size);
     return;
+}
+
+void read_until(BitStream* bit_stream, char* symbols, char** data) {
+    unsigned int size = 0;
+    get_next_byte(bit_stream); // Start the reading
+    
+    while (!is_contained(bit_stream -> current_byte, (unsigned char*) symbols, strlen(symbols)) && (bit_stream -> byte < bit_stream -> size)) {
+        if (data != NULL) {
+            (*data)[size] = bit_stream -> current_byte;
+            size++;
+        }
+        
+        get_next_byte(bit_stream);
+    }
+    
+    if (data != NULL) {
+        (*data)[size] = '\0';
+        size++;
+        (*data) = (char*) realloc(*data, size * sizeof(char));
+    }
+
+    return;
+}
+
+void skip_back(BitStream* bit_stream, unsigned int n) {
+    bit_stream -> byte -= n;
+    bit_stream -> current_byte = (bit_stream -> stream)[bit_stream -> byte];
 }
 
 #endif //_BIT_STREAM_H_

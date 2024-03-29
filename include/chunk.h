@@ -39,7 +39,7 @@ static unsigned int* generate_crc_table() {
 Chunks find_and_check_chunks(unsigned char* file_data, unsigned int file_length, unsigned int* idat_chunks_count) {
     Chunks chunks = (Chunks) {.chunks = NULL, .chunks_count = 0, .invalid_chunks = 0};
     chunks.chunks = (Chunk*) calloc(1, sizeof(Chunk));
-    BitStream* bit_stream = allocate_bit_stream(file_data, file_length);
+    BitStream* bit_stream = allocate_bit_stream(file_data, file_length, FALSE);
     unsigned int* crc_table = generate_crc_table();
 
     // Skip the PNG magic number

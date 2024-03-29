@@ -101,20 +101,37 @@ void debug_print(Colors color, const char* format, ...) {
 
 #else
 
-void print_hex(Colors /*color*/, unsigned char /*val*/) {
-    return;
-}
-void print_bits(Colors /*color*/, unsigned long int /*val*/, unsigned char /*bits*/) {
-    return;
-}
-void print_line(unsigned char* /*ptr*/, int /*start*/, unsigned int /*line_len*/) {
-    return;
-}
-void print_table(Colors /*color*/, unsigned char* /*table*/) {
+#define NOT_USED(var) (void) var
+
+void print_hex(Colors color, unsigned char val) {
+    NOT_USED(color);
+    NOT_USED(val);
     return;
 }
 
-void debug_print(Colors /*color*/, const char* /*format*/, ...) {
+void print_bits(Colors color, unsigned long int val, unsigned char bits) {
+    NOT_USED(color);
+    NOT_USED(val);
+    NOT_USED(bits);
+    return;
+}
+
+void print_line(unsigned char* ptr, int start, unsigned int line_len) {
+    NOT_USED(ptr);
+    NOT_USED(start);
+    NOT_USED(line_len);
+    return;
+}
+
+void print_table(Colors color, unsigned char* table) {
+    NOT_USED(color);
+    NOT_USED(table);
+    return;
+}
+
+void debug_print(Colors color, const char* format, ...) {
+    NOT_USED(color);
+    NOT_USED(format);
     return;
 }
 

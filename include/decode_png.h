@@ -130,7 +130,7 @@ static void convert_to_RGB(PNGImage* image) {
     unsigned char color_type = image -> color_type;
     unsigned int width = (image -> image_data).width;
     unsigned int height = (image -> image_data).height;
-    BitStream* bit_stream = allocate_bit_stream(decoded_data, size);
+    BitStream* bit_stream = allocate_bit_stream(decoded_data, size, FALSE);
     unsigned int new_size = width * height;
 
     RGBA rgba = (RGBA) {};
@@ -199,7 +199,7 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
     unsigned int average = 0;
     unsigned int paeth = 0;
 
-    BitStream* decompressed_stream = allocate_bit_stream(decompressed_data, decompressed_data_size);
+    BitStream* decompressed_stream = allocate_bit_stream(decompressed_data, decompressed_data_size, FALSE);
     const unsigned short int bit_mask = 0xFF;
     debug_print(WHITE, "decompressed_data size: %u, filtered_img_width: %u\n", decompressed_data_size, filtered_img_width);
 
@@ -401,7 +401,7 @@ void decode_idat(PNGImage* image, Chunk idat_chunk) {
         debug_print(YELLOW, "read: %u, length: %u\n", (image -> bit_stream) -> byte, idat_chunk.length + idat_chunk.pos);
 
         // append the current block data to the compressed stream
-        if (image -> current_idat_chunk == 0) image -> compressed_stream = allocate_bit_stream(compressed_data, idat_chunk.length);
+        if (image -> current_idat_chunk == 0) image -> compressed_stream = allocate_bit_stream(compressed_data, idat_chunk.length, FALSE);
         else append_n_bytes(image -> compressed_stream, compressed_data, idat_chunk.length);
         
         (image -> current_idat_chunk)++;
@@ -470,7 +470,7 @@ Image decode_png(FileData* image_file) {
     PNGImage* image = (PNGImage*) calloc(1, sizeof(PNGImage));
     image -> idat_chunk_count = 0;
     Chunks chunks = find_and_check_chunks(image_file -> data, image_file -> length, &(image -> idat_chunk_count));
-    image -> bit_stream = allocate_bit_stream(image_file -> data, image_file -> length);
+    image -> bit_stream = allocate_bit_stream(image_file -> data, image_file -> length, FALSE);
     image -> palette = (RGBA) { .R = NULL, .G = NULL, .B = NULL, .A = NULL };
     image -> is_palette_defined = FALSE;
     (image -> image_data).decoded_data = (unsigned char*) calloc(1, sizeof(unsigned char));

@@ -558,7 +558,7 @@ static void deallocate_data_table(DataTables* data_tables) {
 static void decode_data(JPEGImage* image, DataTables* data_tables, unsigned char* image_data, unsigned int image_size) {
     unsigned short int err = 0;
     unsigned char components = data_tables -> components_count;
-    BitStream* bit_stream = allocate_bit_stream(image_data, image_size);
+    BitStream* bit_stream = allocate_bit_stream(image_data, image_size, FALSE);
 
     if ((image -> image_data).components == 1) {
         unsigned int pixels_x = 8 * (data_tables -> max_sf_h / (data_tables -> components)[0].sampling_factor_h);
@@ -633,7 +633,7 @@ Image decode_jpeg(FileData* image_file) {
     image -> image_file = *image_file;
     image -> mcu_count = 0;
     image -> mcus = (MCU*) calloc(1, sizeof(MCU));
-    image -> bit_stream = allocate_bit_stream(image_file -> data, image_file -> length);
+    image -> bit_stream = allocate_bit_stream(image_file -> data, image_file -> length, FALSE);
     image -> mcu_per_line = 0;
     
     // Init data tables
