@@ -207,7 +207,7 @@ bool create_ppm_image(Image image, const char* filename) {
     return NO_ERROR;
 }
 
-void flip_image_vertically(Image image) {
+void flip_image_horizontally(Image image) {
     unsigned int half_image_size = (unsigned int) floorl(image.size / 2.0L);
     for (unsigned int i = 0; i < half_image_size; ++i) {
         unsigned char temp = image.decoded_data[i];
@@ -217,7 +217,7 @@ void flip_image_vertically(Image image) {
     return;
 }
 
-void flip_image_horizontally(Image image) {
+void flip_image_vertically(Image image) {
     for (unsigned int h = 0; h < image.height; ++h) {
         unsigned int half_width_size = (unsigned int) floorl(image.width / 2.0L);
         for (unsigned int w = 0; w < half_width_size; ++w) {
