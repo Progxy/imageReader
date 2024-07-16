@@ -17,4 +17,5 @@ Compile using the `idl` option with makefile
 When compiling using `IDL` as a shared library remember to add the following flags to include it: `L. -lidl`
 
 NOTE: remember to add the path to the library to the `LD_LIBRARY_PATH` variable on Linux
+
 NOTE: remember to define `_USE_IMAGE_LIBRARY_` before including `image_io.h`, or you'll not be able to use the `idl` types
