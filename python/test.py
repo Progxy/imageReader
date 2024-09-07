@@ -12,6 +12,7 @@ class Image(Structure):
         ("error", c_int)
     ]
 
+# NOTE: First compile the static library and make sure that it's in the same directory as this file
 # Define the decode image function using ctypes
 libidl = CDLL("./libidl.so")
 decode_image = libidl.decode_image
