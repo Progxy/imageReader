@@ -5,9 +5,9 @@ debug:
 	gcc $(FLAGS) -D"_DEBUG_MODE_" -g image.c -o out/image `pkg-config --cflags --libs gtk+-3.0`
 
 # Compile the decoder in normal mode (only the warnings and the errors are shown)
-image: image.c 
+image: image.c
 	gcc $(FLAGS) image.c -o out/image `pkg-config --cflags --libs gtk+-3.0`
 
 # Compile as a shared library to use with the definitions contained in idl.h
-idl: 
+idl:
 	gcc $(FLAGS) -fPIC ./include/image_io.c -shared -o out/libidl.so
