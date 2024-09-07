@@ -18,6 +18,8 @@ typedef enum ImageError {NO_ERROR, FILE_NOT_FOUND, INVALID_FILE_TYPE, FILE_ERROR
 typedef enum FileType {JPEG, PNG, PPM} FileType;
 typedef unsigned char bool;
 
+const char* err_codes[] = {"NO_ERROR", "FILE_NOT_FOUND", "INVALID_FILE_TYPE", "FILE_ERROR", "INVALID_MARKER_LENGTH", "INVALID_QUANTIZATION_TABLE_NUM", "INVALID_HUFFMAN_TABLE_NUM", "INVALID_IMAGE_SIZE", "EXCEEDED_LENGTH", "UNSUPPORTED_JPEG_TYPE", "INVALID_DEPTH_COLOR_COMBINATION", "INVALID_CHUNK_LENGTH", "INVALID_COMPRESSION_METHOD", "INVALID_FILTER_METHOD", "INVALID_INTERLACE_METHOD", "INVALID_IEND_CHUNK_SIZE", "DECODING_ERROR"};
+
 typedef struct FileData {
     unsigned int length;
     unsigned char* data;
@@ -37,6 +39,8 @@ typedef struct Image {
 
 Image decode_image(const char* file_path);
 bool create_ppm_image(Image image, const char* filename);
+void flip_image_horizontally(Image image);
+void flip_image_vertically(Image image);
 void deallocate_image(Image image);
 
 #ifdef _NO_LIBRARY_

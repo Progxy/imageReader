@@ -2,3 +2,5 @@ out/
 .vscode/
 assets/
 test/
+python/libidl.so
+python/lenna.jpg
