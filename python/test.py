@@ -19,7 +19,7 @@ decode_image = libidl.decode_image
 decode_image.argtypes = [POINTER(c_uint8)]
 decode_image.restype = Image
 
-if len(sys.argv) < 1:
+if len(sys.argv) <= 1:
     print("Error: no arguments passed!")
     sys.exit(1)
 
