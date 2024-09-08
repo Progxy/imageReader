@@ -1,22 +1,22 @@
-from ctypes import *
 import tkinter as tk
 import sys
+import ctypes
 
-class Image(Structure):
+class Image(ctypes.Structure):
     _fields_ = [
-        ("width", c_uint32),
-        ("height", c_uint32),
-        ("decoded_data", POINTER(c_uint8)),
-        ("size", c_uint32),
-        ("components", c_uint8),
-        ("error", c_int)
+        ("width", ctypes.c_uint32),
+        ("height", ctypes.c_uint32),
+        ("decoded_data", ctypes.POINTER(ctypes.c_uint8)),
+        ("size", ctypes.c_uint32),
+        ("components", ctypes.c_uint8),
+        ("error", ctypes.c_int)
     ]
 
 # NOTE: First compile the static library and make sure that it's in the same directory as this file
 # Define the decode image function using ctypes
-libidl = CDLL("./libidl.so")
+libidl = ctypes.CDLL("./libidl.so")
 decode_image = libidl.decode_image
-decode_image.argtypes = [POINTER(c_uint8)]
+decode_image.argtypes = [ctypes.POINTER(ctypes.c_uint8)]
 decode_image.restype = Image
 
 if len(sys.argv) <= 1:
@@ -25,9 +25,9 @@ if len(sys.argv) <= 1:
 
 # Decode the image file
 file = (sys.argv[1]).encode(encoding="utf-8")
-char_str_type = c_uint8 * len(file)
+char_str_type = ctypes.c_uint8 * len(file)
 image = decode_image(char_str_type(*file))
-image_data = bytes(cast(image.decoded_data, POINTER(c_uint8))[:image.size]) # Convert the image data to "bytes" object
+image_data = bytes(ctypes.cast(image.decoded_data, ctypes.POINTER(ctypes.c_uint8))[:image.size]) # Convert the image data to "bytes" object
 
 # Check for errors
 if (image.error):
