@@ -34,7 +34,7 @@ static void decode_rst(JPEGImage* image, unsigned char interval_count, unsigned 
 static void decode_dht(JPEGImage* image, DataTables* data_tables);
 static void deallocate_data_table(DataTables* data_tables);
 static void decode_data(JPEGImage* image, DataTables* data_tables, unsigned char* image_data, unsigned int image_size);
-static DataTables* init_data_tables();
+static DataTables* init_data_tables(void);
 Image decode_jpeg(FileData* image_file);
 
 /* -------------------------------------------------------------------------------------- */
@@ -47,7 +47,7 @@ static Component* get_component_by_id(DataTables* data_tables, unsigned char com
             return components;
         }
     }
-    
+
     return NULL;
 }
 
@@ -85,7 +85,7 @@ static void decode_com(JPEGImage* image) {
 
     // Deallocate the comment data
     free(comment);
-    
+
     // Print the marker section
     print_line(bit_stream -> stream, bit_stream -> byte - length, length);
 
@@ -108,7 +108,7 @@ static void decode_app(JPEGImage* image, unsigned char marker_code) {
         return;
     }
 
-    // Get the end of the current marker section by adding the length and subtracting 2 (the bytes that represent the length of the marker are counted inside the length) 
+    // Get the end of the current marker section by adding the length and subtracting 2 (the bytes that represent the length of the marker are counted inside the length)
     unsigned int end_of_marker = bit_stream -> byte + length - 2;
 
     // Get the identifier
@@ -164,7 +164,7 @@ static void decode_dqt(JPEGImage* image, DataTables* data_tables) {
     }
 
     unsigned int data_len = bit_stream -> byte + length - 2;
-    
+
     while (bit_stream -> byte < data_len) {
         unsigned char dqt_info = get_next_byte_uc(bit_stream);
         unsigned char precision = (dqt_info >> 4) & 15;
@@ -180,7 +180,7 @@ static void decode_dqt(JPEGImage* image, DataTables* data_tables) {
             return;
         }
 
-        unsigned char* table = get_next_n_byte_uc(bit_stream, 64);    
+        unsigned char* table = get_next_n_byte_uc(bit_stream, 64);
         QuantizationTable qt_table = {.data = table, .id = dqt_id};
 
         // Store the quantization table data
@@ -196,7 +196,7 @@ static void decode_dqt(JPEGImage* image, DataTables* data_tables) {
         debug_print(YELLOW, "Quantization Table:\n");
         print_table(YELLOW, (data_tables -> qt_tables)[dqt_id].data);
     }
-    
+
     // Print the marker section
     print_line(bit_stream -> stream, bit_stream -> byte - length, length);
 
@@ -230,7 +230,7 @@ static void decode_sof(JPEGImage* image, DataTables* data_tables, unsigned char 
 
     (image -> image_data).height = (get_next_byte_uc(bit_stream) << 8) | get_next_byte_uc(bit_stream);
     debug_print(YELLOW, "Height: %d\n", (image -> image_data).height);
-    
+
     // Check that the height is valid
     if ((image -> image_data).height <= 0) {
         error_print("Invalid image height!\n");
@@ -257,7 +257,7 @@ static void decode_sof(JPEGImage* image, DataTables* data_tables, unsigned char 
         component.pred = 0;
         component.id = get_next_byte_uc(bit_stream);
         debug_print(YELLOW, "Component_id: %d, %s\n", component.id, component_types[component.id]);
-    
+
         component.sampling_factor_h = (get_next_byte_uc(bit_stream) >> 4) & 15;
         component.sampling_factor_v = (bit_stream -> current_byte) & 15;
 
@@ -269,7 +269,7 @@ static void decode_sof(JPEGImage* image, DataTables* data_tables, unsigned char 
 
         // Store the component data
         data_tables -> components = (Component*) (!(data_tables -> components_count) ? calloc(1, sizeof(Component)) : realloc(data_tables -> components, sizeof(Component) * (data_tables -> components_count + 1)));
-        data_tables -> components_count++; 
+        data_tables -> components_count++;
         (data_tables -> components)[data_tables -> components_count - 1] = component;
     }
 
@@ -287,7 +287,7 @@ static void decode_sof(JPEGImage* image, DataTables* data_tables, unsigned char 
         if (max_sf_h < sampling_factors[i][0]) {
             max_sf_h = sampling_factors[i][0];
         }
-        
+
         if (max_sf_v < sampling_factors[i][1]) {
             max_sf_v = sampling_factors[i][1];
         }
@@ -320,18 +320,18 @@ static void decode_sos(JPEGImage* image, DataTables* data_tables) {
         (image -> image_data).error = length & 0x8008;
         return;
     }
-    
+
     unsigned char components = get_next_byte_uc(bit_stream);
 
     debug_print(YELLOW, "Components: %d\n", components);
 
-    for (int i = 0; i < components; ++i) { 
+    for (int i = 0; i < components; ++i) {
         unsigned char component_id = get_next_byte_uc(bit_stream);
         unsigned char dc_table = (get_next_byte_uc(bit_stream) >> 4) & 15;
         unsigned char ac_table = (bit_stream -> current_byte) & 15;
 
         Component* component = get_component_by_id(data_tables, component_id);
-        
+
         if (component == NULL) {
             error_print("INVALID_COMPONENT: invalid component_id\n");
             continue;
@@ -382,21 +382,21 @@ static void decode_sos(JPEGImage* image, DataTables* data_tables) {
 static void decode_dri(JPEGImage* image) {
     BitStream* bit_stream = image -> bit_stream;
     debug_print(PURPLE, " DRI marker found at byte: %d: \n", (bit_stream) -> byte);
-    
+
     // Get the length of the marker section
-    unsigned short length = get_marker_len(image); 
-    
+    unsigned short length = get_marker_len(image);
+
     // Get the number of mcu per line of sample
     image -> mcu_per_line = (get_next_byte_uc(bit_stream) << 8) + get_next_byte_uc(bit_stream);
     debug_print(YELLOW, "%u MCUs for each line of the sample\n", image -> mcu_per_line);
-    
+
     // Print the marker section
     print_line(bit_stream -> stream, bit_stream -> byte - 8, 16);
 
     if (length & 0x8000) {
         (image -> image_data).error = length & 0x8008;
         return;
-    }   
+    }
 
     return;
 }
@@ -430,13 +430,13 @@ static void decode_dht(JPEGImage* image, DataTables* data_tables) {
     if (length & 0x8000) {
         (image -> image_data).error = length & 0x8008;
         return;
-    }   
+    }
 
     unsigned int data_len = bit_stream -> byte + length - 2;
 
     while (bit_stream -> byte < data_len) {
         // Initialize the Huffman Data
-        HuffmanData hf_data = {};
+        HuffmanData hf_data = {0};
 
         // Store the info of the table
         unsigned char ht_info = get_next_byte_uc(bit_stream);
@@ -466,7 +466,7 @@ static void decode_dht(JPEGImage* image, DataTables* data_tables) {
         for (unsigned char i = 0; i < 16; ++i) {
             values_len += hf_data.hf_lengths[i];
         }
-        
+
         // Get the huffman values
         hf_data.hf_values = get_next_n_byte_uc(bit_stream, values_len);
         debug_print(YELLOW, "Codes: ");
@@ -519,7 +519,7 @@ static void deallocate_data_table(DataTables* data_tables) {
     free(data_tables -> components);
     free(data_tables -> qt_tables);
     free(data_tables -> comp_du_count);
-    
+
     for (unsigned char i = 0; i < data_tables -> hf_ac_count; ++i) {
         free((data_tables -> hf_ac)[i].hf_lengths);
         free((data_tables -> hf_ac)[i].hf_values);
@@ -541,15 +541,15 @@ static void deallocate_data_table(DataTables* data_tables) {
         free((data_tables -> hf_dc)[i].min_codes);
         free((data_tables -> hf_dc)[i].val_ptr);
     }
-    
-    free(data_tables -> hf_dc);    
-    
+
+    free(data_tables -> hf_dc);
+
     // Deallocate sampling factors
     for (unsigned char i = 0; i < data_tables -> components_count; ++i) {
         free((data_tables -> sampling_factors)[i]);
     }
     free(data_tables -> sampling_factors);
-    
+
     free(data_tables);
 
     return;
@@ -566,8 +566,8 @@ static void decode_data(JPEGImage* image, DataTables* data_tables, unsigned char
         image -> mcu_x = ((image -> image_data).width + pixels_x - 1) / pixels_x;
         image -> mcu_y = ((image -> image_data).height + pixels_y - 1) / pixels_y;
     } else {
-        image -> mcu_x = ((image -> image_data).width + 8 * data_tables -> max_sf_h - 1) / (8 * data_tables -> max_sf_h); 
-        image -> mcu_y = ((image -> image_data).height + 8 * data_tables -> max_sf_v - 1) / (8 * data_tables -> max_sf_v); 
+        image -> mcu_x = ((image -> image_data).width + 8 * data_tables -> max_sf_h - 1) / (8 * data_tables -> max_sf_h);
+        image -> mcu_y = ((image -> image_data).height + 8 * data_tables -> max_sf_v - 1) / (8 * data_tables -> max_sf_v);
     }
 
     debug_print(BLUE, "\n");
@@ -577,21 +577,21 @@ static void decode_data(JPEGImage* image, DataTables* data_tables, unsigned char
     long double* t_m = generate_tm(m);
     unsigned int mcus_count = (image -> mcu_per_line) ? (image -> mcu_count + image -> mcu_per_line) : (image -> mcu_x * image -> mcu_y);
 
-    // Decode all the MCUs inside the scan section 
+    // Decode all the MCUs inside the scan section
     while (err != DNL_MARKER_DETECTED && (image -> mcu_count < mcus_count)) {
         image -> mcus = (MCU*) realloc(image -> mcus, sizeof(MCU) * (image -> mcu_count + 1));
         MCU mcu = generate_mcu(components, bit_stream, data_tables, &err);
 
         if (err == INVALID_BYTE_STUFFING) {
             error_print("Invalid byte stuffing at byte: %u\n", bit_stream -> byte);
-            
+
             debug_print(YELLOW, "Near compressed data dump: ");
             for (unsigned int i = (bit_stream -> byte - 4); (i < bit_stream -> size) && (i < (bit_stream -> byte + 4)); ++i) {
                 print_hex(YELLOW, (bit_stream -> stream)[i]);
             }
-            
+
             debug_print(YELLOW, "\n");
-            
+
             (image -> image_data).error = DECODING_ERROR;
             return;
         } else if (err == LENGTH_EXCEEDED) {
@@ -615,12 +615,12 @@ static void decode_data(JPEGImage* image, DataTables* data_tables, unsigned char
     return;
 }
 
-static DataTables* init_data_tables() {
+static DataTables* init_data_tables(void) {
     DataTables* data_tables = (DataTables*) calloc(1, sizeof(DataTables));
     data_tables -> hf_dc = (HuffmanData*) calloc(1, sizeof(HuffmanData));
     data_tables -> hf_dc_count = 0;
     data_tables -> hf_ac = (HuffmanData*) calloc(1, sizeof(HuffmanData));
-    data_tables -> hf_ac_count = 0;    
+    data_tables -> hf_ac_count = 0;
     data_tables -> qt_tables = (QuantizationTable*) calloc(1, sizeof(QuantizationTable));
     data_tables -> qt_count = 0;
     debug_print(BLUE, "init data table...\n");
@@ -635,7 +635,7 @@ Image decode_jpeg(FileData* image_file) {
     image -> mcus = (MCU*) calloc(1, sizeof(MCU));
     image -> bit_stream = allocate_bit_stream(image_file -> data, image_file -> length, FALSE);
     image -> mcu_per_line = 0;
-    
+
     // Init data tables
     DataTables* data_tables = init_data_tables();
 
@@ -660,18 +660,18 @@ Image decode_jpeg(FileData* image_file) {
             return image -> image_data;
         }
 
-        // Set the position after the marker 
+        // Set the position after the marker
         set_byte(image -> bit_stream, markers_table.positions[i]);
         debug_print(YELLOW, "\n");
 
         unsigned char marker_type = markers_table.marker_type[i];
 
         switch (marker_type) {
-            case 0xC0:   
-            case 0xC1:   
+            case 0xC0:
+            case 0xC1:
             case 0xC2:
-            case 0xC3: 
-            case 0xC5:   
+            case 0xC3:
+            case 0xC5:
             case 0xC6:
             case 0xC7:
             case 0xC9:
@@ -684,14 +684,14 @@ Image decode_jpeg(FileData* image_file) {
                 decode_sof(image, data_tables, marker_type);
                 break;
 
-            case 0xC4: 
+            case 0xC4:
                 decode_dht(image, data_tables);
                 break;
 
-            case 0xDB: 
+            case 0xDB:
                 decode_dqt(image, data_tables);
                 break;
-            
+
             case 0xDC:
                 debug_print(PURPLE, "DNL marker found at byte: %d: \n", (image -> bit_stream) -> byte);
                 debug_print(YELLOW, "length: %u\n", get_next_byte_uc(image -> bit_stream) | (get_next_byte_uc(image -> bit_stream) << 8));
@@ -702,7 +702,7 @@ Image decode_jpeg(FileData* image_file) {
                 decode_dri(image);
                 break;
 
-            case 0xDA: 
+            case 0xDA:
                 decode_sos(image, data_tables);
                 break;
 
@@ -723,7 +723,7 @@ Image decode_jpeg(FileData* image_file) {
                 }
                 break;
         }
-        
+
         CHECK_ERROR_FLAG(image);
 
     }
@@ -741,7 +741,7 @@ Image decode_jpeg(FileData* image_file) {
     deallocate_bit_stream(image -> bit_stream);
 
     debug_print(YELLOW, "\n");
-    
+
     debug_print(BLUE, "size: %u\n", (image -> image_data).size);
 
     return (image -> image_data);

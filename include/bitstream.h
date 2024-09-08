@@ -55,7 +55,7 @@ unsigned char get_next_byte_uc(BitStream* bit_stream) {
 void* get_next_n_byte(BitStream* bit_stream, unsigned int n, unsigned char size) {
     void* data = calloc(n, size);
     unsigned char* data_ptr = (unsigned char*) data;
-    
+
     for (unsigned int i = 0; i < (n * size); ++i) {
         get_next_byte(bit_stream);
         data_ptr[i] = bit_stream -> current_byte;
@@ -81,7 +81,7 @@ unsigned char get_next_bit(BitStream* bit_stream, unsigned char reverse_flag) {
         get_next_byte(bit_stream);
         bit_stream -> bit = 8;
     }
-    
+
     unsigned char bit_value = (bit_stream -> current_byte) & 1;
     bit_stream -> current_byte >>= 1;
     (bit_stream -> bit)--;
@@ -123,13 +123,13 @@ unsigned short int get_next_bytes_us(BitStream* bit_stream) {
 
 unsigned short int get_next_n_bits(BitStream* bit_stream, unsigned char n_bits, unsigned char reverse_flag) {
     unsigned short int bits = 0;
-    
+
     for (unsigned char i = 0; i < n_bits; ++i) {
         if (reverse_flag) bits += get_next_bit(bit_stream, reverse_flag) << i;
         else bits = (bits << 1) + get_next_bit(bit_stream, reverse_flag);
         if (bit_stream -> error) return bits;
     }
-    
+
     return bits;
 }
 
@@ -167,7 +167,7 @@ char* get_str(BitStream* bit_stream, unsigned char* str_terminators, unsigned in
         str = (char*) realloc(str, (index + 1) * sizeof(char));
         str[index] = str_data;
         index++;
-        str_data = get_next_byte_uc(bit_stream); 
+        str_data = get_next_byte_uc(bit_stream);
     }
 
     return str;
@@ -177,7 +177,7 @@ void append_n_bytes(BitStream* bit_stream, unsigned char* data, unsigned int len
     unsigned int old_size = bit_stream -> size;
     (bit_stream -> size) += length;
     bit_stream -> stream = (unsigned char*) realloc(bit_stream -> stream, sizeof(unsigned char) * (bit_stream -> size));
-    
+
     for (unsigned int i = 0; i < length; ++i) {
         (bit_stream -> stream)[old_size + i] = data[i];
     }
@@ -191,16 +191,16 @@ void append_n_bytes(BitStream* bit_stream, unsigned char* data, unsigned int len
 void read_until(BitStream* bit_stream, char* symbols, char** data) {
     unsigned int size = 0;
     get_next_byte(bit_stream); // Start the reading
-    
+
     while (!is_contained(bit_stream -> current_byte, (unsigned char*) symbols, strlen(symbols)) && (bit_stream -> byte < bit_stream -> size)) {
         if (data != NULL) {
             (*data)[size] = bit_stream -> current_byte;
             size++;
         }
-        
+
         get_next_byte(bit_stream);
     }
-    
+
     if (data != NULL) {
         (*data)[size] = '\0';
         size++;

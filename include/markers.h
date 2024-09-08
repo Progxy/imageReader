@@ -1,7 +1,6 @@
 #ifndef _MARKERS_H_
 #define _MARKERS_H_
 
-#include <stdio.h>
 #include "./debug_print.h"
 #include "./types.h"
 #include "./bitstream.h"
@@ -15,12 +14,12 @@ bool is_marker(unsigned char data) {
             return TRUE;
         }
     }
-    
+
     return FALSE;
 }
 
 unsigned short int get_marker_len(JPEGImage* image) {
-    unsigned short int length = (get_next_byte_uc(image -> bit_stream) << 8) | get_next_byte_uc(image -> bit_stream); 
+    unsigned short int length = (get_next_byte_uc(image -> bit_stream) << 8) | get_next_byte_uc(image -> bit_stream);
 
     // Check that the length is valid
     if (length < 2) {
@@ -39,7 +38,7 @@ MarkersTable get_markers(FileData* image_file) {
     markers_table.count = 1;
     markers_table.marker_type = (unsigned char*) calloc(1, 1);
     markers_table.positions = (unsigned int*) calloc(1, sizeof(unsigned int));
-    
+
     unsigned char* data = image_file -> data;
     unsigned int len = image_file -> length;
 
@@ -47,7 +46,7 @@ MarkersTable get_markers(FileData* image_file) {
     for (unsigned int i = 1; i < len; ++i) {
         previous_data = data[i - 1];
         unsigned char current_data = data[i];
-        
+
         if ((current_data < 0xC0 || current_data == 0xFF) || (previous_data != 0xFF)) {
             continue;
         }

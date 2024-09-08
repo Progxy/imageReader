@@ -9,7 +9,7 @@
 #include "./dct.h"
 
 #define COMPUTE_IDCT(data_unit, t_m, m) mul_mat(data_unit, t_m, m, 8)
-#define PI 3.14159265358979323846L 
+#define PI 3.14159265358979323846L
 #define SQRT2 1.4142135623730951L
 
 const unsigned char zigzag[64] = {
@@ -27,7 +27,7 @@ const unsigned char zigzag[64] = {
 
 static void unzigzag_vec(int** data);
 static void dequantize_data_unit(int* data_unit, unsigned char* quantization_table);
-long double* generate_m();
+long double* generate_m(void);
 long double* generate_tm(long double* m);
 static long double round_colour(long double val);
 static void ycbcr_to_rgb(int* y, int* cb, int* cr, RGB* rgb);
@@ -66,12 +66,12 @@ static void dequantize_data_unit(int* data_unit, unsigned char* quantization_tab
     return;
 }
 
-long double* generate_m() {
+long double* generate_m(void) {
     long double* m = (long double*) calloc(64, sizeof(long double));
     const long double first_row_value = 1.0L / (2.0L * SQRT2);
 
     for (unsigned char v = 0; v < 8; ++v) {
-        m[v] = first_row_value; 
+        m[v] = first_row_value;
     }
 
     for (unsigned char u = 1; u < 8; ++u) {
@@ -85,13 +85,13 @@ long double* generate_m() {
 
 long double* generate_tm(long double* m) {
     long double* t_m = (long double*) calloc(64, sizeof(long double));
-    
+
     for (unsigned char i = 0; i < 8; ++i) {
         for (unsigned char l = 0; l < 8; ++l) {
             t_m[i * 8 + l] = m[l * 8 + i];
         }
     }
-    
+
     return t_m;
 }
 
@@ -131,11 +131,11 @@ static float bilinear_interpolation(float x, float y, float q11, float q12, floa
 
 static int** upsample(unsigned char sf_h, unsigned char sf_v, int* data) {
     int** new_data = (int**) calloc(sf_h * sf_v, sizeof(int*));
-    
+
     for (unsigned char i = 0; i < sf_h * sf_v; ++i) {
         new_data[i] = (int*) calloc(64, sizeof(int));
     }
-    
+
     for (int i = 0; i < 8 * sf_h; i++) {
         for (int j = 0; j < 8 * sf_v; j++) {
             // Calculate corresponding coordinates in the 8x8 matrix
@@ -151,7 +151,7 @@ static int** upsample(unsigned char sf_h, unsigned char sf_v, int* data) {
             float q12 = data[x1 * 8 + y2];
             float q21 = data[x2 * 8 + y1];
             float q22 = data[x2 * 8 + y2];
-            
+
             unsigned int ind = i * 8 * sf_v + j;
             unsigned int ind_x = ind % (8 * sf_h);
             unsigned int ind_y = (ind - ind_x) / (8 * sf_h);
@@ -161,7 +161,7 @@ static int** upsample(unsigned char sf_h, unsigned char sf_v, int* data) {
             new_data[pos_y * sf_h + pos_x][(ind_y % 8) * 8 + (ind_x % 8)] = bilinear_interpolation(x - x1, y - y1, q11, q12, q21, q22);
         }
     }
-    
+
     return new_data;
 }
 
@@ -205,13 +205,13 @@ void decode_mcu(MCU mcu, DataTables* data_table, long double* t_m, long double* 
         for (unsigned char j = 0; j < mcu.comp_du_count[comp_id]; ++j, ++mcu_count) {
             unsigned char qt_id = (data_table -> components)[comp_id].qt_id;
             unsigned char* quantization_table = (data_table -> qt_tables)[qt_id].data;
-            
+
             // Dequantize the data units
             dequantize_data_unit(mcu.data_units[mcu_count], quantization_table);
 
             // Unzigzag data unit
             unzigzag_vec(mcu.data_units + mcu_count);
-            
+
             // Calculate the IDCT for each data units
             COMPUTE_IDCT(mcu.data_units + mcu_count, t_m, m);
         }

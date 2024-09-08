@@ -83,7 +83,7 @@ static bool is_valid_depth_color_combination(unsigned char bit_depth, PNGType co
     }
 
     CHECK_VALID_BIT_DEPTH(bit_depth, color_types_starts[index], color_types_lengths[index]);
-    
+
     return FALSE;
 }
 
@@ -133,7 +133,7 @@ static void convert_to_RGB(PNGImage* image) {
     BitStream* bit_stream = allocate_bit_stream(decoded_data, size, FALSE);
     unsigned int new_size = width * height;
 
-    RGBA rgba = (RGBA) {};
+    RGBA rgba = (RGBA) {0};
     rgba.R = (unsigned char*) calloc(new_size, sizeof(unsigned char));
     rgba.G = (unsigned char*) calloc(new_size, sizeof(unsigned char));
     rgba.B = (unsigned char*) calloc(new_size, sizeof(unsigned char));
@@ -160,7 +160,7 @@ static void convert_to_RGB(PNGImage* image) {
     deallocate_bit_stream(bit_stream);
     (image -> image_data).decoded_data = (unsigned char*) calloc(width * height * components, sizeof(unsigned char));
     (image -> image_data).size = 0;
-    
+
     for (unsigned int i = 0, index = 0; i < (width * height * components); i += components, ++index, ((image -> image_data).size) += components) {
         ((image -> image_data).decoded_data)[i] = (image -> is_palette_defined) ? (image -> palette).R[rgba.R[index]] : rgba.R[index];
         ((image -> image_data).decoded_data)[i + 1] = (image -> is_palette_defined) ? (image -> palette).G[rgba.G[index]] : rgba.G[index];
@@ -214,7 +214,7 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
                 }
                 none++;
                 break;
-            }            
+            }
 
             case 1: {
                 for (unsigned int col = 0; col < row_len; ++i, ++col, ++(*size)) {
@@ -223,8 +223,8 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
                 }
                 subtract++;
                 break;
-            }           
-            
+            }
+
             case 2: {
                 for (unsigned int col = 0; col < row_len; ++i, ++col, ++(*size)) {
                     unsigned char data = get_next_byte_uc(decompressed_stream);
@@ -233,7 +233,7 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
                 up++;
                 break;
             }
-            
+
             case 3: {
                 for (unsigned int col = 0; col < row_len; ++i, ++col, ++(*size)) {
                     unsigned char data = get_next_byte_uc(decompressed_stream);
@@ -241,8 +241,8 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
                 }
                 average++;
                 break;
-            }            
-            
+            }
+
             case 4: {
                 for (unsigned int col = 0; col < row_len; ++i, ++col, ++(*size)) {
                     unsigned char data = get_next_byte_uc(decompressed_stream);
@@ -260,7 +260,7 @@ static void defilter(PNGImage* image, unsigned char* decompressed_data, unsigned
     }
 
     debug_print(YELLOW, "none: %u, subtract: %u, up: %u, average: %u, paeth: %u\n", none, subtract, up, average, paeth);
-    
+
     deallocate_bit_stream(decompressed_stream);
 
     return;
@@ -290,7 +290,7 @@ void decode_ihdr(PNGImage* image, Chunk ihdr_chunk) {
 
     image -> bit_depth = get_next_byte_uc(image -> bit_stream);
     image -> color_type = get_next_byte_uc(image -> bit_stream);
-    
+
     debug_print(YELLOW, "bit depth: %u\n", image -> bit_depth);
     debug_print(YELLOW, "color type: %s\n", png_types[image -> color_type]);
 
@@ -312,7 +312,7 @@ void decode_ihdr(PNGImage* image, Chunk ihdr_chunk) {
         (image -> image_data).error = INVALID_COMPRESSION_METHOD;
         return;
     }
-    
+
     debug_print(YELLOW, "compression method: %u\n", image -> compression_method);
 
     image -> filter_method = get_next_byte_uc(image -> bit_stream);
@@ -384,7 +384,7 @@ void decode_plte(PNGImage* image, Chunk plte_chunk) {
 
 void decode_idat(PNGImage* image, Chunk idat_chunk) {
     debug_print(PURPLE, "type: %s, length: %u, pos: %u\n", idat_chunk.chunk_type, idat_chunk.length, idat_chunk.pos);
-    
+
     if (((image -> color_type) == INDEXED_COLOR) && (!image -> is_palette_defined)) {
         error_print("the palette should be defined before the IDAT chunk\n");
         (image -> image_data).error = DECODING_ERROR;
@@ -396,16 +396,16 @@ void decode_idat(PNGImage* image, Chunk idat_chunk) {
     // Check that there's no other IDAT chunks before this one
     if (image -> idat_chunk_count >= image -> current_idat_chunk) {
         debug_print(YELLOW, "idat_chunk: %u of %u\n", image -> current_idat_chunk, image -> idat_chunk_count);
-        
+
         unsigned char* compressed_data = get_next_n_byte_uc(image -> bit_stream, idat_chunk.length);
         debug_print(YELLOW, "read: %u, length: %u\n", (image -> bit_stream) -> byte, idat_chunk.length + idat_chunk.pos);
 
         // append the current block data to the compressed stream
         if (image -> current_idat_chunk == 0) image -> compressed_stream = allocate_bit_stream(compressed_data, idat_chunk.length, FALSE);
         else append_n_bytes(image -> compressed_stream, compressed_data, idat_chunk.length);
-        
+
         (image -> current_idat_chunk)++;
-        
+
         if (image -> idat_chunk_count > image -> current_idat_chunk) return;
     }
 
@@ -415,7 +415,7 @@ void decode_idat(PNGImage* image, Chunk idat_chunk) {
     unsigned int stream_length = 0;
     unsigned char* decompressed_stream = inflate(image -> compressed_stream, &err, &stream_length);
     deallocate_bit_stream(image -> compressed_stream);
-    
+
     if (err) {
         error_print((char*) decompressed_stream);
         (image -> image_data).error = DECODING_ERROR;
@@ -442,12 +442,12 @@ void decode_iend(PNGImage* image, Chunk iend_chunk) {
     if (iend_chunk.length) {
         error_print("invalid IEND chunk size [%u] as it should be 0", iend_chunk.length);
         (image -> image_data).error = INVALID_IEND_CHUNK_SIZE;
-        return; 
+        return;
     }
 
     debug_print(PURPLE, "type: %s, length: %u, pos: %u\n", iend_chunk.chunk_type, iend_chunk.length, iend_chunk.pos);
     debug_print(YELLOW, "End of the image\n");
-    
+
     return;
 }
 

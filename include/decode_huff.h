@@ -1,7 +1,6 @@
 #ifndef _DECODE_HF_
 #define _DECODE_HF_
 
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "./types.h"
@@ -18,7 +17,7 @@ unsigned char next_bit(BitStream* bit_stream, unsigned short int* err) {
 
     if (cnt == 0) {
         get_next_byte(bit_stream);
-        
+
         if (bit_stream -> error) {
             *err = LENGTH_EXCEEDED;
             return 0;
@@ -26,11 +25,11 @@ unsigned char next_bit(BitStream* bit_stream, unsigned short int* err) {
 
         b = bit_stream -> current_byte;
         cnt = 8;
-        
+
         if (b == 0xFF) {
             // Skip the next byte for byte stuffing
             get_next_byte(bit_stream);
-        
+
             if (bit_stream -> error) {
                 *err = LENGTH_EXCEEDED;
                 return 0;
@@ -61,7 +60,7 @@ unsigned char next_bit(BitStream* bit_stream, unsigned short int* err) {
     // Update the stored values
     bit_stream -> current_byte = b;
     bit_stream -> bit = cnt;
-    
+
     return bit;
 }
 
@@ -71,7 +70,7 @@ short int* generate_huffsize(unsigned char* hf_lengths) {
     unsigned short int i = 0;
     unsigned short int j = 1;
 
-    while (i < 16) {   
+    while (i < 16) {
         if (j > hf_lengths[i]) {
             i++;
             j = 1;
@@ -109,18 +108,18 @@ short int* generate_huffcode(short int* huff_size) {
 
         do {
             code <<= 1;
-            si++; 
+            si++;
         } while (huff_size[k] != si);
     }
 
-    return huff_codes;  
+    return huff_codes;
 }
 
 void decode_tables(HuffmanData hf_data) {
     unsigned char i = 0;
     unsigned char j = 0;
-    
-    while (i < 16) {        
+
+    while (i < 16) {
         if (!hf_data.hf_lengths[i]) {
             hf_data.max_codes[i] = -1;
         } else {
@@ -131,7 +130,7 @@ void decode_tables(HuffmanData hf_data) {
             j++;
         }
         i++;
-    }    
+    }
 
     return;
 }
@@ -141,12 +140,12 @@ unsigned char decode(HuffmanData hf_data, BitStream* bit_stream, unsigned short 
     short int code = next_bit(bit_stream, err);
     CHECK_ERRORS(err);
 
-    while (code > hf_data.max_codes[i]) {  
+    while (code > hf_data.max_codes[i]) {
         code = (code << 1) + next_bit(bit_stream, err);
         CHECK_ERRORS(err);
 
         i++;
-    } 
+    }
 
     unsigned char j = hf_data.val_ptr[i] + code - hf_data.min_codes[i];
 
@@ -155,7 +154,7 @@ unsigned char decode(HuffmanData hf_data, BitStream* bit_stream, unsigned short 
 
 int receive(unsigned char bits, BitStream* bit_stream, unsigned short int* err) {
     int val = 0;
-    unsigned char i = 0; 
+    unsigned char i = 0;
 
     while (i < bits) {
         val = (val << 1) + next_bit(bit_stream, err);
@@ -183,7 +182,7 @@ int decode_dc(HuffmanData huffman_data, BitStream *bit_stream, unsigned short in
 
     int diff = receive(bits, bit_stream, err);
     CHECK_ERRORS(err);
-    
+
     diff = extend(diff, bits);
 
     return diff;
@@ -210,7 +209,7 @@ void decode_ac(HuffmanData huffman_data, int* zz, BitStream *bit_stream, unsigne
         if (*err) {
             return;
         }
-    
+
         low_bits = rs & 0x0F;
         high_bits = ((rs & 0xF0) >> 4) & 0x0F;
         r = high_bits;
@@ -247,7 +246,7 @@ int* decode_data_unit(HuffmanData* huffman_data, BitStream *bit_stream, unsigned
     }
 
     decode_ac(huffman_data[AC], zz, bit_stream, err);
-    
+
     return zz;
 }
 
@@ -278,7 +277,7 @@ MCU generate_mcu(unsigned char components, BitStream* bit_stream, DataTables* da
             if (*err == LENGTH_EXCEEDED) {
                 // If data finish leave the mcu filled with zeros
                 warning_print("length exceeded, component: %u, data unit: %u\n", i, j);
-                
+
                 unsigned char du_count = 0;
                 for (unsigned char s = 0; s < mcu.components; ++s) {
                     du_count += mcu.comp_du_count[s];
@@ -287,8 +286,8 @@ MCU generate_mcu(unsigned char components, BitStream* bit_stream, DataTables* da
                 for (unsigned char t = mcu.data_units_count; t < du_count; ++t) {
                     mcu.data_units[t] = (int*) calloc(64, sizeof(int));
                     mcu.data_units_count++;
-                } 
-                
+                }
+
                 return mcu;
             } else if (*err) {
                 error_print("error in decode_huff...\n");

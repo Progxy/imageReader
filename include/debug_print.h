@@ -27,7 +27,7 @@ void warning_print(const char* format, ...) {
     return;
 }
 
-#ifdef _DEBUG_MODE_ 
+#ifdef _DEBUG_MODE_
 
 static const char hex_values[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
@@ -54,17 +54,17 @@ void print_line(unsigned char* ptr, int start, unsigned int line_len) {
     if (start < 0) {
         return;
     }
-    
+
     SET_COLOR(YELLOW);
     printf("Byte (%d...%d): ", start + 1, start + line_len + 1);
-    
+
     for (unsigned int i = 0; i <= line_len; ++i) {
         print_hex(i == line_len ? GREEN : YELLOW, *(ptr + i + start));
     }
 
     printf("\n");
     RESET_COLOR();
-    
+
     return;
 }
 
@@ -89,7 +89,7 @@ void debug_print(Colors color, const char* format, ...) {
         printf("%s", format);
         return;
     }
-    
+
     printf("DEBUG: ");
     va_list args;
     va_start (args, format);

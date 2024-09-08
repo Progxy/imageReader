@@ -16,12 +16,12 @@ static void crc_byte(BitStream* bit_stream, unsigned int* crc_register, unsigned
 static unsigned int calculate_crc(BitStream* bit_stream, unsigned int length, unsigned int* crc_table) {
     unsigned int crc_register = 0xFFFFFFFFL;
     for (unsigned int ii = 0; ii < length ; ++ii) {
-        crc_byte(bit_stream, &crc_register, crc_table); 
+        crc_byte(bit_stream, &crc_register, crc_table);
     }
     return (~crc_register);
 }
 
-static unsigned int* generate_crc_table() {
+static unsigned int* generate_crc_table(void) {
     unsigned int* crc_table = (unsigned int*) calloc(256, sizeof(unsigned int));
     for (unsigned int ii = 0; ii < 256; ++ii) {
         crc_table[ii] = ii;
@@ -46,7 +46,7 @@ Chunks find_and_check_chunks(unsigned char* file_data, unsigned int file_length,
     set_byte(bit_stream, 8);
 
     while (bit_stream -> byte < bit_stream -> size) {
-        Chunk chunk = (Chunk) {};
+        Chunk chunk = (Chunk) {0};
         chunk.length = get_next_bytes_ui(bit_stream);
 
         chunk.chunk_type[4] = '\0';
@@ -81,7 +81,7 @@ Chunks find_and_check_chunks(unsigned char* file_data, unsigned int file_length,
 
     free(crc_table);
     free(bit_stream);
-    
+
     return chunks;
 }
 

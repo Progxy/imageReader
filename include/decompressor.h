@@ -13,7 +13,7 @@
 // Fixed huffman literal/lengths codes
 const unsigned short int fixed_val_ptr[] = {256, 0, 280, 144};
 const unsigned short int fixed_mins[] = {0x00, 0x30, 0xC0, 0x190};
-const unsigned short int fixed_maxs[] = {0x17, 0xBF, 0xC7, 0x1FF};    
+const unsigned short int fixed_maxs[] = {0x17, 0xBF, 0xC7, 0x1FF};
 const unsigned short int fixed_distance_val_ptr[] = {0x00};
 const unsigned short int fixed_distance_mins[] = {0x00};
 const unsigned short int fixed_distance_maxs[] = {0x1F};
@@ -80,9 +80,9 @@ static void generate_codes(DynamicHF* hf) {
         (hf -> max_codes)[bits] = ((hf -> max_codes)[bits - 1] + bl_count[bits - 1]) << 1;
         (hf -> min_codes)[bits] = (hf -> max_codes)[bits];
     }
-    
+
     free(bl_count);
-    
+
     unsigned char* values_index = (unsigned char*) calloc((hf -> bit_length) + 1, sizeof(unsigned char));
     for (unsigned short int i = 0; i < hf -> size; ++i) {
         if ((hf -> lengths)[i] != 0) {
@@ -111,7 +111,7 @@ static unsigned short int decode_hf_fixed(BitStream* bit_stream, unsigned short 
             code = (code << 1) + get_next_bit(bit_stream, TRUE);
         }
     }
-    
+
     return 0xFFFF;
 }
 
@@ -126,7 +126,7 @@ static unsigned short int decode_hf(BitStream* bit_stream, unsigned short int co
             break;
         }
     }
-    
+
     debug_print(RED, "\n");
     debug_print(RED, "probably invalid huffman tree, bit_length: %u, size: %u: \n", hf.bit_length, hf.size);
 
@@ -185,19 +185,19 @@ static void copy_data(SlidingWindow* sliding_window, unsigned char** dest, unsig
     for (unsigned short int i = 0; i < length; ++i, ++(*index)) {
         (*dest)[*index] = ((sliding_window -> window)[cur_pos]);
         ((sliding_window -> window)[sliding_window -> out_pos]) = ((sliding_window -> window)[cur_pos]);
-        
+
         // Advance to the next byte to copy
         cur_pos = ((cur_pos) + 1) & (SLIDING_WINDOW_MASK);
         sliding_window -> out_pos = ((sliding_window -> out_pos) + 1) & (SLIDING_WINDOW_MASK);
     }
-    
+
     return;
 }
 
 static unsigned short int get_length(BitStream* bit_stream, unsigned short int value) {
     const unsigned short int base_values[] = {3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258};
     const unsigned char extra_bits[] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0};
-    
+
     unsigned short int length = base_values[value - 257];
     unsigned char extra = get_next_n_bits(bit_stream, extra_bits[value - 257], TRUE);
 
@@ -206,8 +206,8 @@ static unsigned short int get_length(BitStream* bit_stream, unsigned short int v
 
 static unsigned short int get_distance(BitStream* bit_stream, unsigned short int value) {
     const unsigned short int base_values[] = {1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577};
-    const unsigned char extra_bits[] = {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13}; 
-    
+    const unsigned char extra_bits[] = {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
+
     unsigned short int distance = base_values[value];
     unsigned short int extra = get_next_n_bits(bit_stream, extra_bits[value], TRUE);
 
@@ -236,7 +236,7 @@ static char* read_zlib_header(BitStream* bit_stream) {
     debug_print(YELLOW, "window size: %u\n", window_size);
     debug_print(YELLOW, "preset dictionary: %u\n", preset_dictionary);
     debug_print(YELLOW, "compression level: %u\n", compression_level);
-    
+
     if (compression_method != 8) {
         return ("invalid compression method");
     } else if (window_size > 7) {
@@ -246,7 +246,7 @@ static char* read_zlib_header(BitStream* bit_stream) {
     } else if ((zlib_compress_data * 256 + zlib_flags) % 31 != 0) {
         return ("CMF+FLG checksum failed");
     }
-    
+
     return NULL;
 }
 
@@ -262,17 +262,17 @@ static unsigned char read_uncompressed_data(BitStream* bit_stream, unsigned char
 
     unsigned char* next_bytes = get_next_n_byte_uc(bit_stream, length);
     *decompressed_data = (unsigned char*) realloc(*decompressed_data, sizeof(unsigned char) * (*decompressed_data_length + length));
-    
+
     for (unsigned int i = 0; i < length; ++i, ++(*decompressed_data_length)) {
         (*decompressed_data)[*decompressed_data_length] = next_bytes[i];
     }
-    
+
     free(next_bytes);
     return FALSE;
 }
 
 static void decode_dynamic_huffman_tables(BitStream* bit_stream, DynamicHF* literals_hf, DynamicHF* distance_hf) {
-    DynamicHF decoder_hf = (DynamicHF) {};
+    DynamicHF decoder_hf = (DynamicHF) {0};
     literals_hf -> size = get_next_n_bits(bit_stream, 5, TRUE) + 257;
     distance_hf -> size = get_next_n_bits(bit_stream, 5, TRUE) + 1;
     decoder_hf.size = get_next_n_bits(bit_stream, 4, TRUE) + 4;
@@ -280,7 +280,7 @@ static void decode_dynamic_huffman_tables(BitStream* bit_stream, DynamicHF* lite
 
     // Retrieve the length to build the huffman tree to decode the other two huffman trees (Literals and Distance)
     const unsigned char order_of_code_lengths[] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
-    decoder_hf.lengths = (unsigned char*) calloc(19, sizeof(unsigned char)); 
+    decoder_hf.lengths = (unsigned char*) calloc(19, sizeof(unsigned char));
 
     for (unsigned char i = 0; i < decoder_hf.size; ++i) {
         (decoder_hf.lengths)[order_of_code_lengths[i]] = get_next_n_bits(bit_stream, 3, TRUE);
@@ -303,7 +303,7 @@ static void decode_dynamic_huffman_tables(BitStream* bit_stream, DynamicHF* lite
     return;
 }
 
-unsigned char* inflate(BitStream* bit_stream, unsigned char* err, unsigned int* decompressed_data_length) {    
+unsigned char* inflate(BitStream* bit_stream, unsigned char* err, unsigned int* decompressed_data_length) {
     // Initialize decompressed data
     SlidingWindow sliding_window = (SlidingWindow) {.out_pos = 0};
     sliding_window.window = (unsigned char*) calloc(SLIDING_WINDOW_SIZE, sizeof(unsigned char));
@@ -341,15 +341,15 @@ unsigned char* inflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
             free(decompressed_data);
             return ((unsigned char*) "invalid compression type\n");
         }
-        
-        DynamicHF literals_hf = (DynamicHF) {};
-        DynamicHF distance_hf = (DynamicHF) {};
+
+        DynamicHF literals_hf = (DynamicHF) {0};
+        DynamicHF distance_hf = (DynamicHF) {0};
 
         // Select between the two huffman tables
         if (type == 2) {
             decode_dynamic_huffman_tables(bit_stream, &literals_hf, &distance_hf);
         } else {
-            literals_hf.bit_length = 4;            
+            literals_hf.bit_length = 4;
             distance_hf.bit_length = 1;
         }
 
@@ -361,14 +361,14 @@ unsigned char* inflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
             if (type == 1) decoded_value = decode_hf_fixed(bit_stream, code, fixed_mins, fixed_maxs, fixed_val_ptr, literals_hf.bit_length);
             else decoded_value = decode_hf(bit_stream, code, literals_hf);
             //debug_print(WHITE, "decoded_value: %u\n", decoded_value);
-            
+
             if (decoded_value == 0xFFFF) {
                 *err = 1;
                 free(sliding_window.window);
                 free(decompressed_data);
                 return ((unsigned char*) "invalid decoded value\n");
             }
-            
+
             if (decoded_value < 256) {
                 decompressed_data = (unsigned char*) realloc(decompressed_data, sizeof(unsigned char) * ((*decompressed_data_length) + 1));
                 decompressed_data[*decompressed_data_length] = decoded_value;
@@ -408,7 +408,7 @@ unsigned char* inflate(BitStream* bit_stream, unsigned char* err, unsigned int* 
     // Calculate the crc of the blocks
     for (unsigned int i = 0; i < (*decompressed_data_length); ++i) {
         update_adler_crc(decompressed_data[i], &adler_register);
-    } 
+    }
 
     free(sliding_window.window);
 
