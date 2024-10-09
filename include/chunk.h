@@ -85,4 +85,9 @@ Chunks find_and_check_chunks(unsigned char* file_data, unsigned int file_length,
     return chunks;
 }
 
+void deallocate_chunks(Chunks chunks) {
+	free(chunks.chunks);	
+	return;
+}
+
 #endif //_CHUNK_H_

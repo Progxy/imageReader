@@ -510,8 +510,12 @@ Image decode_png(FileData* image_file) {
 
     // Deallocate stuff
     deallocate_bit_stream(image -> bit_stream);
+	deallocate_chunks(chunks);
 
-    return image -> image_data;
+	Image image_data = image -> image_data;
+	free(image);
+
+    return image_data;
 }
 
 #endif //_DECODE_PNG_H_
