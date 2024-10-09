@@ -69,4 +69,10 @@ MarkersTable get_markers(FileData* image_file) {
     return markers_table;
 }
 
+void deallocate_markers(MarkersTable markers_table) {
+ 	free(markers_table.positions);
+	free(markers_table.marker_type);
+  	return;
+}   
+
 #endif //_MARKERS_H_

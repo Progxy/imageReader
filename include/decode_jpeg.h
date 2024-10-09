@@ -112,10 +112,15 @@ static void decode_app(JPEGImage* image, unsigned char marker_code) {
     unsigned int end_of_marker = bit_stream -> byte + length - 2;
 
     // Get the identifier
-    char* identifier = (char*) calloc(1, 1);
-    for (int i = 0; (get_next_byte(bit_stream), bit_stream -> current_byte) != 0; identifier[i] = bit_stream -> current_byte, ++i) {
-        identifier = (char*) realloc(identifier, i + 2);
-    }
+    char* identifier = (char*) calloc(1, sizeof(char));
+	unsigned int identifier_size = 0;
+    for (identifier_size = 0; (get_next_byte(bit_stream), bit_stream -> current_byte) != 0; ++identifier_size) {
+        identifier = (char*) realloc(identifier, (identifier_size + 1) * sizeof(char));
+		identifier[identifier_size] = bit_stream -> current_byte;
+	}
+	
+	identifier = (char*) realloc(identifier, (identifier_size + 1) * sizeof(char));
+	identifier[identifier_size] = '\0';
 
     debug_print(YELLOW, "Identifier: %s\n", identifier);
 
@@ -517,10 +522,14 @@ static void deallocate_data_table(DataTables* data_tables) {
 
     // Deallocate DataTable
     free(data_tables -> components);
-    free(data_tables -> qt_tables);
     free(data_tables -> comp_du_count);
+    
+	for (unsigned char i = 0; i <= data_tables -> qt_count; ++i) {
+		free(data_tables -> qt_tables[i].data);
+	}
+	free(data_tables -> qt_tables);
 
-    for (unsigned char i = 0; i < data_tables -> hf_ac_count; ++i) {
+    for (unsigned char i = 0; i <= data_tables -> hf_ac_count; ++i) {
         free((data_tables -> hf_ac)[i].hf_lengths);
         free((data_tables -> hf_ac)[i].hf_values);
         free((data_tables -> hf_ac)[i].huff_codes);
@@ -532,7 +541,7 @@ static void deallocate_data_table(DataTables* data_tables) {
 
     free(data_tables -> hf_ac);
 
-    for (unsigned char i = 0; i < data_tables -> hf_dc_count; ++i) {
+    for (unsigned char i = 0; i <= data_tables -> hf_dc_count; ++i) {
         free((data_tables -> hf_dc)[i].hf_lengths);
         free((data_tables -> hf_dc)[i].hf_values);
         free((data_tables -> hf_dc)[i].huff_codes);
@@ -635,6 +644,7 @@ Image decode_jpeg(FileData* image_file) {
     image -> mcus = (MCU*) calloc(1, sizeof(MCU));
     image -> bit_stream = allocate_bit_stream(image_file -> data, image_file -> length, FALSE);
     image -> mcu_per_line = 0;
+	image -> is_exif = 0;
 
     // Init data tables
     DataTables* data_tables = init_data_tables();
@@ -739,12 +749,16 @@ Image decode_jpeg(FileData* image_file) {
     deallocate_mcus(image);
     deallocate_data_table(data_tables);
     deallocate_bit_stream(image -> bit_stream);
+	deallocate_markers(markers_table);
 
     debug_print(YELLOW, "\n");
 
     debug_print(BLUE, "size: %u\n", (image -> image_data).size);
-
-    return (image -> image_data);
+	
+	Image image_data = image -> image_data; 	
+	free(image);
+    
+	return image_data;
 }
 
 #endif //_DECODE_JPEG_H_

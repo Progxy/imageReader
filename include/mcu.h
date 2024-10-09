@@ -253,6 +253,14 @@ unsigned char mcus_to_image(JPEGImage* image, DataTables* data_table) {
 
     // Resize the decoded data
     (image -> image_data).decoded_data = (unsigned char*) realloc((image -> image_data).decoded_data, (image -> image_data).size);
+    for (unsigned int i = 0; i < image -> mcu_count; ++i) {
+    	for (unsigned int j = 0; j < mcus -> max_du; ++j) {
+		free(rgbs[i][j].R);
+		free(rgbs[i][j].G);
+		free(rgbs[i][j].B);
+	}
+	free(rgbs[i]);
+    }
     free(rgbs);
 
     return FALSE;
