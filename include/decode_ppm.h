@@ -44,8 +44,11 @@ Image decode_ppm(FileData* image_file) {
     (image -> image_data).decoded_data = get_next_n_byte_uc(image -> bit_stream, (image -> image_data).size);
 
     deallocate_bit_stream(image -> bit_stream);
+	
+	Image image_data = image -> image_data;
+	free(image);
 
-    return (image -> image_data);
+    return image_data;
 }
 
 #endif //_DECODE_PPM_H_

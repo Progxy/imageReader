@@ -169,6 +169,9 @@ char* get_str(BitStream* bit_stream, unsigned char* str_terminators, unsigned in
         index++;
         str_data = get_next_byte_uc(bit_stream);
     }
+	
+	str = (char*) realloc(str, (index + 1) * sizeof(char));
+	str[index] = '\0';
 
     return str;
 }
