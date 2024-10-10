@@ -1,55 +1,75 @@
 // The current file is an example of the implementation of the library, using gtk to view the image on a new window 
 
-/* #include <gtk/gtk.h> */
+#include <gtk/gtk.h>
 #undef FALSE // Prevent redifinition
 #undef TRUE  // Prevent redifinition
 #define _NO_LIBRARY_ // Use directly the library for this example
 #include "./include/image_io.h"
 
-/* static gboolean on_draw_event(GtkWidget *widget, cairo_t *cr, gpointer user_data) { */
-/*     (void) widget; */
-/*     Image* image = (Image*) user_data; */
-/*     unsigned int offset_x = 25; */
-/*     unsigned int offset_y = 25; */
-        
-/*     for (unsigned int i = 0; i < image -> height; ++i) { */
-/*         for (unsigned int j = 0; j < image -> width; ++j) { */
-/*             unsigned int pos = i * image -> width * (image -> components) + j * (image -> components); */
-/*             // Set the color (RGBA) for the pixel */
-/*             cairo_set_source_rgba(cr, (image -> decoded_data)[pos] / 255.0, (image -> decoded_data)[pos + 1] / 255.0, (image -> decoded_data)[pos + 2] / 255.0, image -> components == 4 ? (image -> decoded_data)[pos + 3] / 255.0 : 1.0); */
-/*             // Draw a filled rectangle (pixel) at position (x, y) with a width and height of 1 */
-/*             cairo_rectangle(cr, j + offset_x, i + offset_y, 1.0, 1.0); */
-/*             cairo_fill(cr); */
-/*         } */
-/*     } */
+static gboolean on_draw_event(GtkWidget *widget, cairo_t *cr, gpointer user_data) {
+    (void) widget;
+    Image* image = (Image*) user_data;
 
-/*     return 0; // Event handled, no need to propagate further */
-/* } */
+	unsigned int image_size = image -> width * image -> height;
+	unsigned char* image_data = (unsigned char*) calloc(image_size * 4, sizeof(unsigned char));
+    int stride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, image -> width);
 
-/* void draw_image(char* filename, Image* image) { */
-/*     int count = 1; */
-/*     char** data = (char**) calloc(1, sizeof(char*)); */
-/*     // Select a name */
-/*     data[0] = filename; */
-/*     gtk_init(&count, &data); */
+	int is_little_endian = 1;
+	if (*((char*) &is_little_endian)) is_little_endian = 1;
+	else is_little_endian = 0;
 
-/*     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL); */
-/*     gtk_window_set_default_size(GTK_WINDOW(window), 200, 200); */
+	for (unsigned int i = 0; i < image_size; i++) {
+        image_data[i * 4 + 2] = is_little_endian ? image -> decoded_data[i * 3 + 0] : image -> decoded_data[i * 3 + 2]; // Red
+        image_data[i * 4 + 1] = image -> decoded_data[i * 3 + 1]; // Green
+        image_data[i * 4 + 0] = is_little_endian ? image -> decoded_data[i * 3 + 2] : image -> decoded_data[i * 3 + 0]; // Blue
+    }
 
-/*     GtkWidget *drawing_area = gtk_drawing_area_new(); */
-/*     gtk_container_add(GTK_CONTAINER(window), drawing_area); */
+    cairo_surface_t *image_surface = cairo_image_surface_create_for_data(
+        image_data,                     // Image data (RGB format)
+        CAIRO_FORMAT_RGB24,              // Format
+        image -> width,                    // Image width
+        image -> height,                   // Image height
+        stride                 // Stride (width * 4 for RGB24)
+    );
 
-/*     // Connect the draw event to the callback function */
-/*     g_signal_connect(G_OBJECT(drawing_area), "draw", G_CALLBACK(on_draw_event), (void*) image); */
+    // Set the surface as the source
+    cairo_set_source_surface(cr, image_surface, 25, 25);
 
-/*     g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL); */
+    // Paint the image on the drawing area
+    cairo_paint(cr);
 
-/*     gtk_widget_show_all(window); */
+    // Clean up
+    cairo_surface_destroy(image_surface);
 
-/*     gtk_main(); */
+	free(image_data);
 
-/*     return; */
-/* } */
+	return 0; // Event handled, no need to propagate further
+}
+
+void draw_image(char* filename, Image* image) {
+    int count = 1;
+    char** data = (char**) calloc(1, sizeof(char*));
+    // Select a name
+    data[0] = filename;
+    gtk_init(&count, &data);
+
+    GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_default_size(GTK_WINDOW(window), 200, 200);
+
+    GtkWidget *drawing_area = gtk_drawing_area_new();
+    gtk_container_add(GTK_CONTAINER(window), drawing_area);
+
+    // Connect the draw event to the callback function
+    g_signal_connect(G_OBJECT(drawing_area), "draw", G_CALLBACK(on_draw_event), (void*) image);
+
+    g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
+
+    gtk_widget_show_all(window);
+
+    gtk_main();
+
+    return;
+}
 
 int main(int argc, char** argv) {
     if (argc != 2) {
@@ -67,7 +87,7 @@ int main(int argc, char** argv) {
         return (image.error);
     }
 
-    /* draw_image(file_name, &image); */
+    draw_image(file_name, &image);
 
     if ((status = create_ppm_image(image, "./out/new_image.ppm"))) {
         error_print("terminate the program with the error code: %s\n", err_codes[status]);
