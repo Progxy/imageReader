@@ -46,6 +46,7 @@ void decode_plte(PNGImage* image, Chunk plte_chunk);
 void decode_idat(PNGImage* image, Chunk idat_chunk);
 void decode_iend(PNGImage* image, Chunk iend_chunk);
 void decode_time(PNGImage* image, Chunk time_chunk);
+void decode_text(PNGImage* image, Chunk text_chunk);
 Image decode_png(FileData* image_file);
 
 /* -------------------------------------------------------------------------------------- */
@@ -466,6 +467,20 @@ void decode_time(PNGImage* image, Chunk time_chunk) {
     return;
 }
 
+void decode_text(PNGImage* image, Chunk text_chunk) {
+	debug_print(PURPLE, "type: %s, length: %u, pos: %u\n", text_chunk.chunk_type, text_chunk.length, text_chunk.pos);
+    set_byte(image -> bit_stream, text_chunk.pos);
+    unsigned int text_index = 0;
+	char keyword = 0;
+	debug_print(WHITE, "keyword: ");
+	for (text_index = 0; (keyword = (char) get_next_byte_uc(image -> bit_stream)) != '\0'; text_index++) printf("%c", keyword);
+	printf("\n");
+	debug_print(WHITE, "text string: ");
+	for (; text_index < text_chunk.length; ++text_index) printf("%c", (char) get_next_byte_uc(image -> bit_stream));
+	printf("\n");
+	return;
+}
+
 Image decode_png(FileData* image_file) {
     PNGImage* image = (PNGImage*) calloc(1, sizeof(PNGImage));
     image -> idat_chunk_count = 0;
@@ -494,6 +509,9 @@ Image decode_png(FileData* image_file) {
             continue;
         } else if (is_str_equal((unsigned char*) "tIME", chunk.chunk_type, 4)) {
             decode_time(image, chunk);
+            continue;
+        } else if (is_str_equal((unsigned char*) "tEXt", chunk.chunk_type, 4)) {
+            decode_text(image, chunk);
             continue;
         }
 
